@@ -1,0 +1,9 @@
+target/
+.cpcache/
+.clj-kondo/.cache/
+.lsp/
+.calva/
+.cider-repl-history
+*.jar
+*.class
+.DS_Store
