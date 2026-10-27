@@ -1,6 +1,6 @@
-JAVAC = javac
-JAR = jar
-JAVA = java
+JAVAC = /home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/javac --release 21
+JAR = /home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/jar
+JAVA = /home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/java
 
 SRC_JAVA = src/java/com/craft/agent/CraftAgent.java src/java/com/craft/agent/Injector.java
 BUILD_DIR = target/classes
@@ -24,17 +24,16 @@ jar: build
 	$(JAR) cmf target/MANIFEST.MF $(AGENT_JAR) -C $(BUILD_DIR) com/craft/agent/CraftAgent.class
 
 attach: jar
-	@if [ -z "$(PID)" ]; then \
-		echo "Erro: Defina o PID do Minecraft. Exemplo: make attach PID=195362 [PORT=7888]"; \
+	@PID_RESOLVED=$$( [ -n "$(PID)" ] && echo "$(PID)" || pgrep -f "KnotClient" | head -n 1 ); \
+	if [ -z "$$PID_RESOLVED" ]; then \
+		echo "[-] Erro: Minecraft não detectado em execução!"; \
 		exit 1; \
-	fi
-	$(JAVA) -cp $(BUILD_DIR) com.craft.agent.Injector $(PID) $(AGENT_JAR) $(PORT)
+	fi; \
+	echo "[+] Minecraft detectado com PID: $$PID_RESOLVED"; \
+	$(JAVA) -cp $(BUILD_DIR) com.craft.agent.Injector $$PID_RESOLVED $(AGENT_JAR) $(PORT)
 
 repl:
-	clj -M:test -m nrepl.cmdline --connect --host 127.0.0.1 --port $(PORT)
-
-test:
-	clj -M:test -m cognitect.test-runner
+	clojure -M -e "(require '[nrepl.cmdline]) (nrepl.cmdline/-main \"--connect\" \"--host\" \"127.0.0.1\" \"--port\" \"$(PORT)\")"
 
 clean:
 	rm -rf target .cpcache

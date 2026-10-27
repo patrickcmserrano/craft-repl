@@ -1,11 +1,15 @@
 package com.craft.agent;
 
+import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileReader;
 import java.io.StringReader;
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.net.URL;
-import java.net.URLClassLoader;
+import java.nio.file.Path;
+import java.util.Set;
+import java.util.jar.JarFile;
 
 /**
  * CraftAgent - Dynamic JVM Attach Agent that bootstraps Clojure & nREPL
@@ -28,54 +32,93 @@ public class CraftAgent {
         }
 
         try {
-            // 1. Localizar o ClassLoader do Fabric (Knot) ou do Servidor
+            // 1. Localizar KnotClassLoader
             ClassLoader knotLoader = null;
-            for (Class<?> clazz : inst.getAllLoadedClasses()) {
-                if (clazz.getName().equals("net.fabricmc.loader.impl.launch.knot.KnotClassLoader")) {
-                    knotLoader = clazz.getClassLoader();
-                    break;
-                }
-                if (clazz.getName().equals("net.minecraft.server.MinecraftServer")) {
-                    knotLoader = clazz.getClassLoader();
+            for (Thread t : Thread.getAllStackTraces().keySet()) {
+                ClassLoader cl = t.getContextClassLoader();
+                if (cl != null && cl.getClass().getName().contains("Knot")) {
+                    knotLoader = cl;
                     break;
                 }
             }
 
             if (knotLoader == null) {
-                System.err.println("[craft-repl] AVISO: KnotClassLoader não encontrado diretamente. Usando ContextClassLoader.");
+                System.err.println("[craft-repl] AVISO: KnotClassLoader não encontrado em threads. Usando ContextClassLoader.");
                 knotLoader = Thread.currentThread().getContextClassLoader();
             }
 
+            // Define KnotClassLoader na thread atual do Attach Listener
+            Thread.currentThread().setContextClassLoader(knotLoader);
+
             System.out.println("[craft-repl] Target ClassLoader: " + knotLoader.getClass().getName());
 
-            // 2. Tentar carregar clojure.lang.RT no KnotClassLoader
-            Class<?> rtClass = null;
-            try {
-                rtClass = Class.forName("clojure.lang.RT", true, knotLoader);
-            } catch (ClassNotFoundException e) {
-                System.out.println("[craft-repl] Clojure runtime ainda não visível no KnotClassLoader.");
+            // 2. Acessar KnotClassDelegate para quebrar o sandbox de isolamento
+            Field delegateField = knotLoader.getClass().getDeclaredField("delegate");
+            delegateField.setAccessible(true);
+            Object delegate = delegateField.get(knotLoader);
+
+            Field vpcsField = delegate.getClass().getDeclaredField("validParentCodeSources");
+            vpcsField.setAccessible(true);
+            @SuppressWarnings("unchecked")
+            Set<Path> vpcs = (Set<Path>) vpcsField.get(delegate);
+
+            Method addUrlFwd = knotLoader.getClass().getDeclaredMethod("addUrlFwd", java.net.URL.class);
+            addUrlFwd.setAccessible(true);
+
+            // 3. Registrar JARs do Clojure / nREPL
+            File jarsListFile = new File("/tmp/clojure_jars.txt");
+            if (jarsListFile.exists()) {
+                BufferedReader reader = new BufferedReader(new FileReader(jarsListFile));
+                String line;
+                int count = 0;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
+                    if (line.isEmpty()) continue;
+                    File jar = new File(line);
+                    if (jar.exists()) {
+                        inst.appendToSystemClassLoaderSearch(new JarFile(jar));
+                        Path p = jar.toPath();
+                        vpcs.add(p);
+                        try {
+                            addUrlFwd.invoke(knotLoader, jar.toURI().toURL());
+                        } catch (Throwable ignored) {}
+                        count++;
+                    }
+                }
+                reader.close();
+                System.out.println("[craft-repl] " + count + " dependências registradas no KnotClassLoader!");
             }
 
-            // 3. Inicializar e iniciar nREPL server
-            if (rtClass != null) {
-                Class<?> compilerClass = Class.forName("clojure.lang.Compiler", true, knotLoader);
-                Method load = compilerClass.getMethod("load", java.io.Reader.class);
-
-                String cljScript =
-                    "(try " +
-                    "  (require '[nrepl.server :as nrepl]) " +
-                    "  (defonce craft-nrepl-server (nrepl/start-server :port " + port + " :bind \"127.0.0.1\")) " +
-                    "  (println \"[craft-repl] 🚀 nREPL escutando em 127.0.0.1:" + port + "\") " +
-                    "  (catch Throwable t " +
-                    "    (println \"[craft-repl] Erro ao iniciar nREPL:\" (.getMessage t))))";
-
-                load.invoke(null, new StringReader(cljScript));
-            } else {
-                System.out.println("[craft-repl] Dica: Certifique-se de que o JAR do Clojure e do nREPL foram adicionados ao classpath.");
+            // 4. Registrar diretório src/clj do projeto
+            File srcClj = new File("/home/pace/dev/craft-repl/src/clj");
+            if (srcClj.exists()) {
+                vpcs.add(srcClj.toPath());
+                addUrlFwd.invoke(knotLoader, srcClj.toURI().toURL());
+                System.out.println("[craft-repl] Diretório src/clj anexado ao classpath do Knot!");
             }
+
+            // 5. Carregar Clojure Runtime (clojure.lang.RT)
+            Class<?> rtClass = Class.forName("clojure.lang.RT", true, knotLoader);
+            System.out.println("[craft-repl] Clojure runtime carregado com sucesso: " + rtClass.getName());
+
+            // 6. Iniciar nREPL Server
+            Class<?> compilerClass = Class.forName("clojure.lang.Compiler", true, knotLoader);
+            Method loadMethod = compilerClass.getMethod("load", java.io.Reader.class);
+
+            String cljScript =
+                "(try " +
+                "  (require 'nrepl.server) " +
+                "  (let [start-srv (resolve 'nrepl.server/start-server)] " +
+                "    (defonce craft-nrepl-server (start-srv :port " + port + " :bind \"127.0.0.1\")) " +
+                "    (println \"[craft-repl] 🚀🚀🚀 nREPL Server escutando em 127.0.0.1:\" " + port + ")) " +
+                "  (catch Throwable t " +
+                "    (println \"[craft-repl] Erro ao iniciar nREPL:\" (.getMessage t)) " +
+                "    (.printStackTrace t)))";
+
+            loadMethod.invoke(null, new StringReader(cljScript));
 
         } catch (Throwable t) {
-            System.err.println("[craft-repl] Falha durante o bootstrap:");
+            System.err.println("[craft-repl] ❌ Falha durante o bootstrap do agente:");
             t.printStackTrace();
         }
     }
