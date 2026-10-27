@@ -29,11 +29,11 @@ agents: build
 		src/java/com/craft/patch/CommandRunnerAgent.java \
 		src/java/com/craft/skin/ExtractSkin.java \
 		src/java/com/craft/skin/SkinRestorer.java
-	@echo "Manifest-Version: 1.0\nAgent-Class: com.craft.patch.CommandRunnerAgent\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true" > target/mf_cmd.mf
+	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.patch.CommandRunnerAgent\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_cmd.mf
 	$(JAR) cmf target/mf_cmd.mf target/live-cmd.jar -C target/bin com/craft/patch/CommandRunnerAgent.class
-	@echo "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.ExtractSkin\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true" > target/mf_extract.mf
+	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.ExtractSkin\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_extract.mf
 	$(JAR) cmf target/mf_extract.mf target/extract-skin.jar -C target/bin com/craft/skin/ExtractSkin.class
-	@echo "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.SkinRestorer\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true" > target/mf_restore.mf
+	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.SkinRestorer\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_restore.mf
 	$(JAR) cmf target/mf_restore.mf target/restore-skin.jar -C target/bin com/craft/skin/SkinRestorer.class
 
 attach: jar
