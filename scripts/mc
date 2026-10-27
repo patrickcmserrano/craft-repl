@@ -1,0 +1,183 @@
+#!/usr/bin/env bash
+# CLI avançado para controle e teleporte no Minecraft via Java Attach
+
+CONFIG_DIR="$HOME/.config/mc-cli"
+mkdir -p "$CONFIG_DIR"
+HOME_FILE="$CONFIG_DIR/home.txt"
+
+# Coordenada padrão da sua base (onde fica sua cama no save)
+if [ ! -f "$HOME_FILE" ]; then
+    echo "-146 107 -85" > "$HOME_FILE"
+fi
+
+PID=$(pgrep -f "KnotServer" 2>/dev/null | head -n 1)
+if [ -z "$PID" ]; then
+    PID=$(pgrep -f "fabric-server-launcher" 2>/dev/null | head -n 1)
+fi
+if [ -z "$PID" ]; then
+    PID=$(pgrep -f "KnotClient" 2>/dev/null | head -n 1)
+fi
+if [ -z "$PID" ]; then
+    PID=$(jps -v 2>/dev/null | grep -E "KnotClient|KnotServer|fabric" | awk '{print $1}' | head -n 1)
+fi
+
+if [ -z "$PID" ]; then
+    echo "❌ Minecraft não está em execução!"
+    exit 1
+fi
+
+JAVA_BIN="/home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/java"
+INJECTOR_CP="/home/pace/dev/craft-repl/target/bin"
+AGENT_JAR="/home/pace/dev/craft-repl/target/live-cmd.jar"
+
+run_cmd() {
+    "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "$AGENT_JAR" "$1" > /dev/null 2>&1
+    echo "⚡ [Minecraft]: /$1"
+}
+
+case "$1" in
+    home)
+        COORDS=$(cat "$HOME_FILE")
+        TARGET="${2:-@a}"
+        run_cmd "tp $TARGET $COORDS"
+        echo "🏠 Teleportado para a base: [$COORDS]"
+        ;;
+    sethome)
+        if [ -n "$2" ] && [ -n "$3" ] && [ -n "$4" ]; then
+            echo "$2 $3 $4" > "$HOME_FILE"
+            echo "📍 Nova base definida em: $2 $3 $4"
+        else
+            echo "Uso: mc sethome <X> <Y> <Z>"
+        fi
+        ;;
+    pull)
+        TARGET="${2:-Lizzie}"
+        run_cmd "tp $TARGET pace"
+        echo "🧲 Puxando $TARGET até você!"
+        ;;
+    goto)
+        TARGET="${2:-Lizzie}"
+        run_cmd "tp pace $TARGET"
+        echo "🏃 Indo até $TARGET!"
+        ;;
+    golem)
+        run_cmd "tp @e[type=iron_golem,limit=1] pace"
+        echo "🤖 Iron Golem teleportado até você!"
+        ;;
+    day)
+        run_cmd "time set day"
+        echo "☀️ O dia amanheceu!"
+        ;;
+    night)
+        run_cmd "time set night"
+        echo "🌙 A noite caiu!"
+        ;;
+    sun)
+        run_cmd "weather clear"
+        echo "🌈 Céu limpo sem chuva!"
+        ;;
+    vision)
+        TARGET="${2:-@a}"
+        run_cmd "effect give $TARGET night_vision infinite 1 true"
+        echo "👁️ Visão noturna ativada para $TARGET!"
+        ;;
+    skin-backup)
+        echo "💾 Extraindo e salvando backup da skin atual dos jogadores..."
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/extract-skin.jar" > /dev/null 2>&1
+        echo "✅ Skin salva com sucesso em /home/pace/minecraft-server/skins/!"
+        ls -la /home/pace/minecraft-server/skins/
+        ;;
+    skin-restore)
+        PLAYER="${2:-pace}"
+        SKIN_NAME="${3:-pace}"
+        echo "🔁 Restaurando skin offline de '$SKIN_NAME' para $PLAYER..."
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/restore-skin.jar" "$PLAYER $SKIN_NAME" > /dev/null 2>&1
+        echo "✅ Skin '$SKIN_NAME' restaurada offline para $PLAYER sem depender de nick/internet!"
+        ;;
+    skin)
+        PLAYER="${2:-pace}"
+        TARGET_SKIN="${3:-M0r7eM}"
+        run_cmd "execute as $PLAYER run skin set player $TARGET_SKIN"
+        echo "🎨 Skin de '$TARGET_SKIN' aplicada para $PLAYER!"
+        ;;
+    heal)
+        TARGET="${2:-@a}"
+        run_cmd "effect give $TARGET instant_health 1 255"
+        run_cmd "effect give $TARGET saturation 1 255"
+        echo "💚 Vida e comida restauradas para $TARGET!"
+        ;;
+    keepinv)
+        run_cmd "gamerule keepInventory true"
+        echo "🛡️ Modo de nunca perder itens ao morrer ATIVADO!"
+        ;;
+    sculk-base)
+        echo "🌌 Aplicando bioma vivo de Sculk ao redor da base com proteção de estruturas..."
+        run_cmd "execute at pace run fill ~-8 ~-2 ~-8 ~8 ~2 ~8 sculk replace grass_block"
+        run_cmd "execute at pace run fill ~-8 ~-2 ~-8 ~8 ~2 ~8 sculk replace dirt"
+        run_cmd "execute at pace run fill ~-9 ~-1 ~-9 ~9 ~2 ~9 sculk_vein replace air"
+        run_cmd "execute at pace run setblock ~3 ~ ~3 sculk_sensor"
+        run_cmd "execute at pace run setblock ~-3 ~ ~-3 sculk_sensor"
+        run_cmd "execute at pace run setblock ~4 ~ ~-2 sculk_catalyst"
+        echo "✅ Sculk orgânico aplicado! Para desfazer a qualquer momento, rode: mc undo-sculk"
+        ;;
+    undo-sculk)
+        echo "🔄 Desfazendo Sculk e restaurando o terreno natural..."
+        run_cmd "execute at pace run fill ~-15 ~-4 ~-15 ~15 ~4 ~15 grass_block replace sculk"
+        run_cmd "execute at pace run fill ~-15 ~-4 ~-15 ~15 ~4 ~15 air replace sculk_vein"
+        run_cmd "execute at pace run fill ~-15 ~-4 ~-15 ~15 ~4 ~15 air replace sculk_sensor"
+        run_cmd "execute at pace run fill ~-15 ~-4 ~-15 ~15 ~4 ~15 air replace sculk_catalyst"
+        run_cmd "execute at pace run fill ~-15 ~-4 ~-15 ~15 ~4 ~15 air replace sculk_shrieker"
+        echo "🌱 Terreno restaurado para grama natural!"
+        ;;
+    backup)
+        echo "💾 Disparando rotina de backup..."
+        /home/pace/minecraft-server/scripts/backup.sh
+        ;;
+    restore)
+        /home/pace/minecraft-server/scripts/restore.sh "$2"
+        ;;
+    attach)
+        echo "🔌 Acoplando agente craft-repl Clojure no Minecraft..."
+        (cd /home/pace/dev/craft-repl && make attach)
+        ;;
+    eval|clj)
+        if [ -z "$2" ]; then
+            echo "Uso: mc eval \"(+ 1 2)\" ou mc clj \"(craft.player/players)\""
+            exit 1
+        fi
+        (cd /home/pace/dev/craft-repl && clojure -M -e "
+          (require '[nrepl.core :as nrepl])
+          (with-open [c (nrepl/connect :port 7888)]
+            (let [client (nrepl/client c 10000)
+                  sess (nrepl/client-session client)]
+              (doseq [m (nrepl/message sess {:op \"eval\" :code \"$2\"})]
+                (when-let [v (:value m)] (println v))
+                (when-let [e (:err m)] (binding [*out* *err*] (print e))))))")
+        ;;
+    repl)
+        echo "🌀 Conectando ao nREPL do Minecraft em 127.0.0.1:7888..."
+        (cd /home/pace/dev/craft-repl && make repl)
+        ;;
+    *)
+        if [ -z "$1" ]; then
+            echo "Comandos rápidos disponíveis:"
+            echo "  mc backup       -> Faz backup instantâneo do mundo"
+            echo "  mc restore <tar>-> Restaura um backup existente"
+            echo "  mc attach       -> Acopla o agente Clojure & nREPL (porta 7888)"
+            echo "  mc eval <expr>  -> Avalia expressão Clojure dentro do Minecraft"
+            echo "  mc repl         -> Abre REPL interativo conectado ao jogo"
+            echo "  mc home         -> Teleporta você e a Liz para a base (-146 107 -85)"
+            echo "  mc pull         -> Puxa a Liz até você"
+            echo "  mc golem        -> Resgata o Golem e puxa até você"
+            echo "  mc goto         -> Vai até a Liz"
+            echo "  mc day          -> Fica de dia"
+            echo "  mc sun          -> Limpa chuva"
+            echo "  mc vision       -> Visão noturna infinita para os dois"
+            echo "  mc heal         -> Restaura vida e comida cheia"
+            echo "  mc keepinv      -> Nunca perde itens ao morrer"
+            echo "  mc <qualquer comando do minecraft>"
+        else
+            run_cmd "$*"
+        fi
+        ;;
+esac
