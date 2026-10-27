@@ -1,30 +1,50 @@
 package com.craft.patch;
 
 import java.lang.instrument.Instrumentation;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.util.List;
 
 public class CommandRunnerAgent {
     public static void agentmain(String args, Instrumentation inst) {
-        System.out.println("[CommandRunnerAgent] 🚀 Disparando teleporte direto no console do servidor...");
+        System.out.println("[CommandRunnerAgent] 🚀 Executando comando no servidor...");
         try {
-            Class<?> fabricLoaderClass = null;
-            for (Class<?> clazz : inst.getAllLoadedClasses()) {
-                if (clazz.getName().equals("net.fabricmc.loader.api.FabricLoader")) {
-                    fabricLoaderClass = clazz;
-                    break;
-                }
-            }
-            if (fabricLoaderClass == null) return;
-
-            Object fabricInstance = fabricLoaderClass.getMethod("getInstance").invoke(null);
-            Object gameInstance = fabricLoaderClass.getMethod("getGameInstance").invoke(fabricInstance);
-
             Object server = null;
-            for (Method m : gameInstance.getClass().getMethods()) {
-                if (m.getParameterCount() == 0 && (m.getName().equals("getServer") || m.getName().equals("method_1562") || m.getReturnType().getName().contains("1132"))) {
-                    server = m.invoke(gameInstance);
-                    if (server != null) break;
+
+            // 1. Tenta obter via VoiceChatServerThread ou threads ativas
+            for (Thread t : Thread.getAllStackTraces().keySet()) {
+                if (t.getName().contains("VoiceChatServerThread") || t.getName().contains("Server thread")) {
+                    for (Field f : t.getClass().getDeclaredFields()) {
+                        String typeName = f.getType().getName();
+                        if (typeName.contains("3176") || typeName.contains("1132") || typeName.contains("MinecraftServer") || typeName.contains("DedicatedServer")) {
+                            f.setAccessible(true);
+                            server = f.get(t);
+                            if (server != null) break;
+                        }
+                    }
+                }
+                if (server != null) break;
+            }
+
+            // 2. Fallback: FabricLoader getGameInstance (para cliente Singleplayer)
+            if (server == null) {
+                Class<?> fabricLoaderClass = null;
+                for (Class<?> clazz : inst.getAllLoadedClasses()) {
+                    if (clazz.getName().equals("net.fabricmc.loader.api.FabricLoader")) {
+                        fabricLoaderClass = clazz;
+                        break;
+                    }
+                }
+                if (fabricLoaderClass != null) {
+                    Object fabricInstance = fabricLoaderClass.getMethod("getInstance").invoke(null);
+                    Object gameInstance = fabricLoaderClass.getMethod("getGameInstance").invoke(fabricInstance);
+                    if (gameInstance != null) {
+                        for (Method m : gameInstance.getClass().getMethods()) {
+                            if (m.getParameterCount() == 0 && (m.getName().equals("getServer") || m.getName().equals("method_1576") || m.getReturnType().getName().contains("1132"))) {
+                                server = m.invoke(gameInstance);
+                                if (server != null) break;
+                            }
+                        }
+                    }
                 }
             }
 
@@ -33,10 +53,22 @@ public class CommandRunnerAgent {
                 return;
             }
 
-            final Object fServer = server;
-            Method executeMethod = fServer.getClass().getMethod("execute", Runnable.class);
+            System.out.println("[CommandRunnerAgent] Servidor localizado: " + server.getClass().getName());
 
-            final String cmd = (args != null && !args.trim().isEmpty()) ? args.trim() : "tp Lizzie pace";
+            final Object fServer = server;
+            Method executeMethod = null;
+            for (Method m : fServer.getClass().getMethods()) {
+                if (m.getName().equals("execute") && m.getParameterCount() == 1 && m.getParameterTypes()[0] == Runnable.class) {
+                    executeMethod = m;
+                    break;
+                }
+            }
+            if (executeMethod == null) {
+                System.err.println("[CommandRunnerAgent] executeMethod não encontrado.");
+                return;
+            }
+
+            final String cmd = (args != null && !args.trim().isEmpty()) ? args.trim() : "say Servidor Ativo!";
 
             executeMethod.invoke(fServer, (Runnable) () -> {
                 try {
@@ -59,13 +91,13 @@ public class CommandRunnerAgent {
                     }
 
                     if (commandSource != null && commandManager != null) {
-                        System.out.println("[CommandRunnerAgent] Executando comando de console: " + cmd);
+                        String cleanCmd = cmd.startsWith("/") ? cmd.substring(1) : cmd;
                         for (Method m : commandManager.getClass().getMethods()) {
                             if (m.getParameterCount() == 2 && m.getParameterTypes()[1] == String.class) {
                                 if (m.getName().equals("executeWithPrefix") || m.getName().equals("method_9249") || m.getParameterTypes()[0].isAssignableFrom(commandSource.getClass())) {
                                     try {
-                                        m.invoke(commandManager, commandSource, cmd);
-                                        System.out.println("[CommandRunnerAgent] ✅ Comando '" + cmd + "' executado via CommandManager!");
+                                        m.invoke(commandManager, commandSource, cleanCmd);
+                                        System.out.println("[CommandRunnerAgent] ✅ Comando executado: /" + cleanCmd);
                                         break;
                                     } catch (Exception ignored) {}
                                 }
@@ -74,66 +106,6 @@ public class CommandRunnerAgent {
                     } else {
                         System.err.println("[CommandRunnerAgent] Não foi possível obter commandSource ou commandManager.");
                     }
-
-                    // 3. Fallback: movimentação física direta no objeto Entity
-                    Object playerManager = null;
-                    for (Method m : fServer.getClass().getMethods()) {
-                        if (m.getParameterCount() == 0 && (m.getName().equals("getPlayerManager") || m.getReturnType().getName().contains("3324"))) {
-                            playerManager = m.invoke(fServer);
-                            if (playerManager != null) break;
-                        }
-                    }
-
-                    if (playerManager != null) {
-                        List<?> players = null;
-                        for (Method m : playerManager.getClass().getMethods()) {
-                            if (m.getParameterCount() == 0 && List.class.isAssignableFrom(m.getReturnType())) {
-                                players = (List<?>) m.invoke(playerManager);
-                                if (players != null) break;
-                            }
-                        }
-
-                        Object host = null;
-                        Object guest = null;
-                        if (players != null) {
-                            for (Object p : players) {
-                                String s = p.toString().toLowerCase();
-                                if (s.contains("pace")) host = p;
-                                else guest = p;
-                            }
-                        }
-
-                        if (host != null && guest != null) {
-                            double x = (double) host.getClass().getMethod("getX").invoke(host);
-                            double y = (double) host.getClass().getMethod("getY").invoke(host);
-                            double z = (double) host.getClass().getMethod("getZ").invoke(host);
-
-                            System.out.println(String.format("[CommandRunnerAgent] Pos do host: %.1f, %.1f, %.1f", x, y, z));
-
-                            // requestTeleport(x, y, z) ou setPosition(x, y, z)
-                            for (Method m : guest.getClass().getMethods()) {
-                                if (m.getParameterCount() == 3 && m.getParameterTypes()[0] == double.class) {
-                                    if (m.getName().equals("requestTeleport") || m.getName().equals("method_14279") || m.getName().equals("setPosition")) {
-                                        m.invoke(guest, x, y + 0.5, z);
-                                        System.out.println("[CommandRunnerAgent] 🚀 Fallback requestTeleport/setPosition executado em " + m.getName() + "!");
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Reenviar commandTree para o host ter comandos no chat
-                            if (commandManager != null) {
-                                for (Method m : commandManager.getClass().getMethods()) {
-                                    if (m.getParameterCount() == 1 && m.getParameterTypes()[0].isAssignableFrom(host.getClass())) {
-                                        m.invoke(commandManager, host);
-                                        System.out.println("[CommandRunnerAgent] 🌳 CommandTree reenviada para 'pace'!");
-                                        break;
-                                    }
-                                }
-                            }
-                        }
-                    }
-
                 } catch (Exception e) {
                     System.err.println("[CommandRunnerAgent] Erro na execução:");
                     e.printStackTrace();
