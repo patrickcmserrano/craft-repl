@@ -136,6 +136,23 @@ case "$1" in
     restore)
         /home/pace/minecraft-server/scripts/restore.sh "$2"
         ;;
+    pyramid)
+        (cd /home/pace/dev/craft-repl && clojure -M -e "(require '[craft.builds :as b]) (b/build-pyramid! ${2:--160} ${3:-70} ${4:--160} ${5:-25})")
+        ;;
+    blueprint)
+        SUB="${2:-backup}"
+        case "$SUB" in
+            backup)
+                (cd /home/pace/dev/craft-repl && clojure -M -e "(require '[craft.blueprint :as bp]) (println (second (bp/backup-main-base!)))")
+                ;;
+            restore)
+                (cd /home/pace/dev/craft-repl && clojure -M -e "(require '[craft.blueprint :as bp]) (println (second (bp/restore-blueprint!)))")
+                ;;
+            *)
+                echo "Uso: mc blueprint [backup|restore]"
+                ;;
+        esac
+        ;;
     attach)
         echo "🔌 Acoplando agente craft-repl Clojure no Minecraft..."
         (cd /home/pace/dev/craft-repl && make attach)
