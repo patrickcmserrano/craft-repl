@@ -15,9 +15,14 @@
       (.build)))
 
 (defn start-sandbox-server!
-  "Starts server.py in sandbox mode on an ephemeral port."
+  "Starts Clojure or Python server in sandbox mode on an ephemeral port."
   [port sandbox]
-  (let [pb (ProcessBuilder. ["/usr/bin/python3" "/home/pace/mc-dashboard/server.py"])
+  (let [backend (or (System/getenv "MC_BACKEND") "clj")
+        java-bin (str (System/getProperty "java.home") "/bin/java")
+        cmd-args (if (= backend "py")
+                   ["/usr/bin/python3" "/home/pace/mc-dashboard/server.py"]
+                   [java-bin "-cp" (System/getProperty "java.class.path") "clojure.main" "-m" "craft.dashboard.server" (str port)])
+        pb (ProcessBuilder. ^java.util.List cmd-args)
         env (.environment pb)]
     (.put env "MC_PORT" (str port))
     (.put env "MC_DRY_RUN" "1")
@@ -30,11 +35,13 @@
     (.put env "MC_MCA_PATH" (str (clojure.java.io/file (:region-dir sandbox) "r.-1.-1.mca")))
     (.put env "MC_BLUEPRINT_OUT_DIR" (str (:blueprints-dir sandbox)))
     (.put env "MC_BLUEPRINT_PATH" (str (clojure.java.io/file (:blueprints-dir sandbox) "base_principal_latest.nbt")))
-    (.redirectErrorStream pb true)
+    (.put env "MC_PUBLIC_DIR" "/home/pace/dev/craft-repl/resources/public")
+    (.redirectOutput pb (java.lang.ProcessBuilder$Redirect/INHERIT))
+    (.redirectError pb (java.lang.ProcessBuilder$Redirect/INHERIT))
     (let [proc (.start pb)]
       ;; Wait for server to listen
       (loop [attempts 0]
-        (if (> attempts 25)
+        (if (> attempts 50)
           (do (.destroyForcibly proc)
               (throw (RuntimeException. "Sandbox server failed to start within timeout")))
           (let [ready? (try

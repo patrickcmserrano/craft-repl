@@ -4,7 +4,7 @@
   (:import [java.lang.reflect Method]
            [java.util.concurrent Executor]))
 
-(defonce ^:private cached-server (atom nil))
+(defonce cached-server (atom nil))
 
 (defn find-minecraft-server
   "Localiza a instância ativa do MinecraftServer no runtime Fabric."
