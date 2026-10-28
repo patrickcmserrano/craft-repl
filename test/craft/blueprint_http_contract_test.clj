@@ -12,7 +12,8 @@
         (is (= 200 status))
         (is (schemas/valid? schemas/TelemetryResponse body))
         (is (vector? (:players body)))
-        (is (= 2 (count (:players body))))))
+        (is (= 2 (count (:players body))))
+        (is (every? #(boolean? (:online %)) (:players body)))))
 
     (testing "GET and POST /api/waypoints"
       (let [{:keys [status body]} (th/http-get "/api/waypoints")]

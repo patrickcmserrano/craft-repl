@@ -68,6 +68,18 @@
       (->> (map str/capitalize)
            (str/join " "))))
 
+(defn item-texture
+  "Returns the relative web URL for the real Minecraft PNG texture of an item ID."
+  [raw-id]
+  (let [clean (last (str/split (or raw-id "") #":"))
+        pub (cfg/public-dir)
+        item-f (io/file pub "textures" "item" (str clean ".png"))
+        block-f (io/file pub "textures" "block" (str clean ".png"))]
+    (cond
+      (.exists item-f) (str "/textures/item/" clean ".png")
+      (.exists block-f) (str "/textures/block/" clean ".png")
+      :else (str "/textures/item/" clean ".png"))))
+
 (defn format-item [item-map]
   (when item-map
     (let [raw-id (str (get item-map "id" ""))
@@ -81,6 +93,7 @@
        :count count-val
        :slot slot
        :icon (item-icon raw-id)
+       :texture (item-texture raw-id)
        :damage damage})))
 
 (defn get-player-dat-file [player-name]

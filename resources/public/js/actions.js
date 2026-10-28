@@ -76,6 +76,20 @@ function selectPlayer(name) {
     loadInventory();
 }
 
+function renderItemSlotContent(item) {
+    if (!item) return '';
+    const cleanId = (item.id || '').split(':').pop();
+    const texUrl = item.texture || `/textures/item/${cleanId}.png`;
+    const fallback = item.icon || '📦';
+    const countBadge = (item.count > 1) ? `<span class="inv-slot-count">${item.count}</span>` : '';
+    
+    return `
+        <img src="${texUrl}" alt="${item.name}" class="mc-item-icon" onerror="if(!this._triedBlock){this._triedBlock=true; this.src='/textures/block/${cleanId}.png';} else { this.style.display='none'; if(this.nextElementSibling) this.nextElementSibling.style.display='inline'; }" />
+        <span class="inv-slot-icon mc-fallback" style="display:none;">${fallback}</span>
+        ${countBadge}
+    `;
+}
+
 async function loadInventory() {
     try {
         const res = await fetch(`/api/inventory?player=${currentPlayer}`);
@@ -86,7 +100,10 @@ async function loadInventory() {
         }
 
         const titleEl = document.getElementById('invPlayerTitle');
-        if (titleEl) titleEl.textContent = `Inventário de ${data.player.toUpperCase()}`;
+        const pObj = (telemetryData && telemetryData.players) ? telemetryData.players.find(p => p.name.toLowerCase() === data.player.toLowerCase()) : null;
+        const isOnline = Boolean(pObj && pObj.online);
+        const badgeHtml = `<span class="player-status-badge ${isOnline ? 'online' : 'offline'}" style="margin-left:6px;">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>`;
+        if (titleEl) titleEl.innerHTML = `Inventário de ${data.player.toUpperCase()} ${badgeHtml}`;
         const statusEl = document.getElementById('invPlayerStatus');
         if (statusEl) statusEl.innerHTML = `❤️ ${data.health} | 🍗 ${data.food}/20 | ⭐ Lv.${data.xp} | Total: ${data.total_items} itens`;
 
@@ -105,7 +122,7 @@ async function loadInventory() {
                 const slot = document.createElement('div');
                 slot.className = 'inv-slot' + (a.item ? '' : ' empty');
                 if (a.item) {
-                    slot.innerHTML = `<span class="inv-slot-icon">${a.item.icon}</span>`;
+                    slot.innerHTML = renderItemSlotContent(a.item);
                     slot.title = `${a.item.name}`;
                     slot.onclick = () => openItemModal(a.item);
                 } else {
@@ -123,10 +140,7 @@ async function loadInventory() {
                 const slot = document.createElement('div');
                 slot.className = 'inv-slot' + (item ? '' : ' empty');
                 if (item) {
-                    slot.innerHTML = `
-                        <span class="inv-slot-icon">${item.icon}</span>
-                        ${item.count > 1 ? `<span class="inv-slot-count">${item.count}</span>` : ''}
-                    `;
+                    slot.innerHTML = renderItemSlotContent(item);
                     slot.title = `${item.name} (${item.count})`;
                     slot.onclick = () => openItemModal(item);
                 }
@@ -142,10 +156,7 @@ async function loadInventory() {
                 const slot = document.createElement('div');
                 slot.className = 'inv-slot' + (item ? '' : ' empty');
                 if (item) {
-                    slot.innerHTML = `
-                        <span class="inv-slot-icon">${item.icon}</span>
-                        ${item.count > 1 ? `<span class="inv-slot-count">${item.count}</span>` : ''}
-                    `;
+                    slot.innerHTML = renderItemSlotContent(item);
                     slot.title = `${item.name} (${item.count})`;
                     slot.onclick = () => openItemModal(item);
                 }
@@ -166,7 +177,13 @@ function openItemModal(item) {
     const info = document.getElementById('modalItemInfo');
     const btnAirdrop = document.getElementById('modalItemBtnAirdrop');
 
-    if (title) title.innerHTML = `${item.icon} ${item.name}`;
+    const cleanId = (item.id || '').split(':').pop();
+    const texUrl = item.texture || `/textures/item/${cleanId}.png`;
+    const iconImg = `<img src="${texUrl}" alt="" class="modal-item-icon" onerror="if(!this._triedBlock){this._triedBlock=true; this.src='/textures/block/${cleanId}.png';} else { this.style.display='none'; }" />`;
+
+    if (title) title.innerHTML = `${iconImg}<span>${item.name}</span>`;
+    if (info) info.textContent = `Quantidade: ${item.count} | ID: ${item.id}${item.damage > 0 ? ` | Dano: ${item.damage}` : ''}`;
+    if (btnAirdrop) btnAirdrop.textContent = `🎁 AirDrop para ${getPartnerShort()}`;
     if (info) info.textContent = `Quantidade: ${item.count} | ID: ${item.id}${item.damage > 0 ? ` | Dano: ${item.damage}` : ''}`;
     if (btnAirdrop) btnAirdrop.textContent = `🎁 AirDrop para ${getPartnerShort()}`;
 

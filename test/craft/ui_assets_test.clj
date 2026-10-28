@@ -35,7 +35,12 @@
     (testing "GET /js/actions.js serves action handlers"
       (let [{:keys [status raw headers]} (th/http-get "/js/actions.js")]
         (is (= 200 status))
-        (is (re-find #"promptCustomHouse" raw))))))
+        (is (re-find #"renderItemSlotContent" raw))))
+
+    (testing "GET /textures/item/diamond_sword.png serves real Minecraft texture"
+      (let [{:keys [status headers]} (th/http-get "/textures/item/diamond_sword.png")]
+        (is (= 200 status))
+        (is (re-find #"image/png" (first (get headers "content-type" []))))))))
 
 (deftest test-5-tabs-and-modals-structure
   (with-sandbox-server

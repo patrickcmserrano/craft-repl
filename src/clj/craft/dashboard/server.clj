@@ -11,7 +11,7 @@
             [craft.dashboard.proxy :as proxy]
             [craft.inventory :as inv]
             [org.httpkit.server :as http-server])
-  (:import [java.io File]
+  (:import [java.io ByteArrayOutputStream DataInputStream DataOutputStream File InputStream RandomAccessFile]
            [java.net InetSocketAddress Socket]))
 
 (defn json-resp
@@ -29,8 +29,108 @@
       true)
     (catch Exception _ false)))
 
+(defn- read-varint [^InputStream in]
+  (loop [result (int 0), shift (int 0)]
+    (let [b (.read in)]
+      (if (neg? b)
+        result
+        (let [value (bit-and b 0x7f)
+              new-res (bit-or result (bit-shift-left value shift))]
+          (if (zero? (bit-and b 0x80))
+            new-res
+            (recur new-res (int (+ shift 7)))))))))
+
+(defn query-slp-players
+  "Queries Minecraft Server List Ping (SLP) on localhost:25565.
+   Returns {:online-count int, :player-names #{...}} or nil on failure."
+  ([] (query-slp-players "127.0.0.1" 25565 300))
+  ([host port timeout-ms]
+   (try
+     (with-open [s (Socket.)]
+       (.connect s (InetSocketAddress. ^String host (int port)) (int timeout-ms))
+       (.setSoTimeout s (int timeout-ms))
+       (let [out (.getOutputStream s)
+             in (.getInputStream s)
+             baos (ByteArrayOutputStream.)
+             dos (DataOutputStream. baos)]
+         ;; Handshake packet: id 0x00, protocol version 767, host, port, next state 1 (status)
+         (.writeByte dos 0x00)
+         (.writeByte dos 0xff)
+         (.writeByte dos 0x05)
+         (let [hb (.getBytes host "UTF-8")]
+           (.writeByte dos (count hb))
+           (.write dos hb))
+         (.writeShort dos (int port))
+         (.writeByte dos 0x01)
+         (let [hb (.toByteArray baos)]
+           (.write out (count hb))
+           (.write out hb))
+         ;; Status request packet: length 1, id 0
+         (.write out (byte-array [1 0]))
+         (.flush out)
+         ;; Read response packet
+         (let [_pkt-len (read-varint in)
+               _pkt-id (read-varint in)
+               str-len (read-varint in)
+               data (byte-array str-len)
+               _ (.readFully (DataInputStream. in) data)
+               raw-json (String. data "UTF-8")
+               parsed (json/read-str raw-json :key-fn keyword)
+               p-info (:players parsed)
+               count (:online p-info 0)
+               sample (:sample p-info [])
+               names (into #{} (keep #(when-let [n (:name %)] (str/lower-case (str n)))) sample)]
+           {:online-count (int count)
+            :player-names names})))
+     (catch Exception _ nil))))
+
+(defn online-players-from-log
+  "Scans the tail of latest.log to determine currently online players."
+  ([] (online-players-from-log (cfg/log-file)))
+  ([log-file]
+   (let [^File f (io/file log-file)]
+     (if-not (.exists f)
+       #{}
+       (try
+         (with-open [r (RandomAccessFile. f "r")]
+           (let [len (.length r)
+                 seek-pos (max 0 (- len 65536))]
+             (.seek r seek-pos)
+             (let [lines (loop [acc []]
+                           (if-let [line (.readLine r)]
+                             (recur (conj acc line))
+                             acc))]
+               (reduce (fn [online line]
+                         (cond
+                           (re-find #"Stopping server" line)
+                           #{}
+                           (re-find #"(\w+) joined the game" line)
+                           (let [[_ name] (re-find #"(\w+) joined the game" line)]
+                             (conj online (str/lower-case name)))
+                           (re-find #"(\w+) left the game" line)
+                           (let [[_ name] (re-find #"(\w+) left the game" line)]
+                             (disj online (str/lower-case name)))
+                           :else online))
+                       #{}
+                       lines))))
+         (catch Exception _ #{}))))))
+
+(defn get-online-players
+  "Returns a set of lower-case player names currently online on the server."
+  []
+  (if-not (is-server-running?)
+    #{}
+    (if-let [slp (query-slp-players)]
+      (if (zero? (:online-count slp))
+        #{}
+        (if (seq (:player-names slp))
+          (:player-names slp)
+          (online-players-from-log)))
+      (online-players-from-log))))
+
 (defn get-telemetry []
   (let [online? (is-server-running?)
+        online-players (if online? (get-online-players) #{})
         players-data
         (vec
          (for [p-name ["pace" "lizzie"]
@@ -38,8 +138,10 @@
                :when nbt]
            (let [pos (get nbt "Pos" [0.0 0.0 0.0])
                  rot (get nbt "Rotation" [0.0 0.0])
-                 health (double (get nbt "Health" 20.0))]
+                 health (double (get nbt "Health" 20.0))
+                 p-online? (contains? online-players p-name)]
              {:name (if (= p-name "pace") "Pace" "Lizzie")
+              :online (boolean p-online?)
               :x (double (first pos))
               :y (double (second pos))
               :z (double (nth pos 2))
@@ -131,6 +233,18 @@
       (str/starts-with? uri "/js/")
       (let [rel (subs uri 4)]
         (serve-static-file (io/file (cfg/public-dir) "js" rel) "application/javascript"))
+
+      (str/starts-with? uri "/textures/")
+      (let [rel (subs uri 10)
+            tex-f (io/file (cfg/public-dir) "textures" rel)]
+        (if (.exists tex-f)
+          {:status 200
+           :headers {"Content-Type" "image/png"
+                     "Cache-Control" "public, max-age=86400"}
+           :body (io/input-stream tex-f)}
+          {:status 404
+           :headers {"Content-Type" "text/plain"}
+           :body "404 Not Found"}))
 
       ;; 2. BlueMap 3D Proxy & Redirects
       (= uri "/map")

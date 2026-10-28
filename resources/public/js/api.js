@@ -61,7 +61,10 @@ async function fetchTelemetry() {
         const badge = document.getElementById('serverBadge');
         if (badge) {
             if (telemetryData.server_online) {
-                badge.textContent = "🟢 MINECRAFT ONLINE";
+                const onlinePlayers = (telemetryData.players || []).filter(p => p.online).map(p => p.name);
+                badge.textContent = onlinePlayers.length > 0 
+                    ? `🟢 ONLINE (${onlinePlayers.join(', ')})` 
+                    : "🟢 MINECRAFT ONLINE";
                 badge.style.background = "rgba(16, 185, 129, 0.15)";
                 badge.style.color = "#34d399";
                 badge.style.borderColor = "rgba(16, 185, 129, 0.3)";
@@ -73,11 +76,50 @@ async function fetchTelemetry() {
             }
         }
 
+        updatePlayerOnlineUI();
         if (typeof drawRadar === 'function') drawRadar();
         updateNukeDistanceBadge();
     } catch (err) {
         console.error('Falha de telemetria', err);
     }
+}
+
+function updatePlayerOnlineUI() {
+    if (!telemetryData || !telemetryData.players) return;
+    const pace = telemetryData.players.find(p => p.name.toLowerCase() === 'pace');
+    const lizzie = telemetryData.players.find(p => p.name.toLowerCase() === 'lizzie');
+    const paceOnline = Boolean(pace && pace.online);
+    const lizOnline = Boolean(lizzie && lizzie.online);
+
+    // Profile selector pills
+    const pBadge = document.getElementById('profileBadgePace');
+    if (pBadge) {
+        pBadge.className = `player-status-badge ${paceOnline ? 'online' : 'offline'}`;
+        pBadge.textContent = paceOnline ? 'ONLINE' : 'OFFLINE';
+    }
+    const lBadge = document.getElementById('profileBadgeLizzie');
+    if (lBadge) {
+        lBadge.className = `player-status-badge ${lizOnline ? 'online' : 'offline'}`;
+        lBadge.textContent = lizOnline ? 'ONLINE' : 'OFFLINE';
+    }
+
+    // Inventory tab selector buttons
+    const invPBadge = document.getElementById('invBadgePace');
+    if (invPBadge) {
+        invPBadge.className = `player-status-badge ${paceOnline ? 'online' : 'offline'}`;
+        invPBadge.textContent = paceOnline ? 'ONLINE' : 'OFFLINE';
+    }
+    const invLBadge = document.getElementById('invBadgeLizzie');
+    if (invLBadge) {
+        invLBadge.className = `player-status-badge ${lizOnline ? 'online' : 'offline'}`;
+        invLBadge.textContent = lizOnline ? 'ONLINE' : 'OFFLINE';
+    }
+
+    // Admin skin cards labels
+    const skinP = document.getElementById('skinLabelPace');
+    if (skinP) skinP.textContent = `Pace (${paceOnline ? 'Online' : 'Offline'})`;
+    const skinL = document.getElementById('skinLabelLizzie');
+    if (skinL) skinL.textContent = `Lizzie (${lizOnline ? 'Online' : 'Offline'})`;
 }
 
 function updateNukeDistanceBadge() {

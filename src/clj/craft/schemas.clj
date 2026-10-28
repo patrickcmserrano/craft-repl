@@ -9,6 +9,7 @@
 (def PlayerTelemetry
   [:map
    [:name :string]
+   [:online :boolean]
    [:x :double]
    [:y :double]
    [:z :double]
@@ -41,6 +42,7 @@
    [:count :int]
    [:slot :int]
    [:icon :string]
+   [:texture {:optional true} :string]
    [:damage :int]])
 
 (def ArmorMap

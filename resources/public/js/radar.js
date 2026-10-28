@@ -13,15 +13,25 @@ function drawRadar() {
     if (!telemetryData) return;
     const myKey = myProfile;
     const partnerKey = myProfile === 'pace' ? 'lizzie' : 'pace';
-    const me = (telemetryData.players || []).find(p => p.name.toLowerCase() === myKey) || {x: -146, y: 107, z: -85};
+    const me = (telemetryData.players || []).find(p => p.name.toLowerCase() === myKey);
     const partner = (telemetryData.players || []).find(p => p.name.toLowerCase() === partnerKey);
 
     const bar = document.getElementById('radarTeleBar');
     if (bar) {
-        const myPosText = `${getMyDisplay()}: [${Math.round(me.x)}, ${Math.round(me.y || 107)}, ${Math.round(me.z)}]`;
-        const partnerPosText = partner 
-            ? `${getPartnerDisplay()}: [${Math.round(partner.x)}, ${Math.round(partner.y || 107)}, ${Math.round(partner.z)}]`
-            : `${getPartnerDisplay()}: Offline`;
+        const meOnline = Boolean(me && me.online);
+        const partnerOnline = Boolean(partner && partner.online);
+
+        const myCoords = me ? `[${Math.round(me.x)}, ${Math.round(me.y || 107)}, ${Math.round(me.z)}]` : '[-146, 107, -85]';
+        const partnerCoords = partner ? `[${Math.round(partner.x)}, ${Math.round(partner.y || 107)}, ${Math.round(partner.z)}]` : '[-146, 107, -85]';
+
+        const myPosText = meOnline
+            ? `🟢 ${getMyDisplay()}: ${myCoords}`
+            : `⚪ ${getMyDisplay()}: Offline (${myCoords})`;
+
+        const partnerPosText = partnerOnline
+            ? `🟢 ${getPartnerDisplay()}: ${partnerCoords}`
+            : `⚪ ${getPartnerDisplay()}: Offline (${partnerCoords})`;
+
         bar.innerHTML = `<span>${myPosText}</span><span>${partnerPosText}</span>`;
     }
 }

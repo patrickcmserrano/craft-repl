@@ -147,6 +147,59 @@ header {
     box-shadow: 0 0 12px rgba(236, 72, 153, 0.35);
 }
 
+/* PLAYER ONLINE/OFFLINE STATUS BADGES */
+.player-status-badge {
+    font-size: 0.62rem;
+    font-weight: 800;
+    padding: 2px 7px;
+    border-radius: 10px;
+    letter-spacing: 0.05em;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    vertical-align: middle;
+}
+
+.player-status-badge.online {
+    background: rgba(16, 185, 129, 0.22);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.45);
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+.player-status-badge.online::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 6px #10b981;
+    display: inline-block;
+    animation: pulse-online 2s infinite;
+}
+
+@keyframes pulse-online {
+    0% { transform: scale(0.95); opacity: 0.8; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.player-status-badge.offline {
+    background: rgba(100, 116, 139, 0.15);
+    color: #94a3b8;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
+.player-status-badge.offline::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #64748b;
+    display: inline-block;
+}
+
 /* BOTTOM NAV BAR (5 TABS, MOBILE FIRST) */
 nav.tab-bar {
     position: fixed;
@@ -372,6 +425,10 @@ button.btn:active {
     color: var(--text-muted);
     cursor: pointer;
     font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .player-selector button.active {
@@ -435,6 +492,34 @@ button.btn:active {
 
 .inv-slot-icon {
     font-size: 1.15rem;
+}
+
+.mc-item-icon {
+    width: 28px;
+    height: 28px;
+    max-width: 82%;
+    max-height: 82%;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.65));
+    pointer-events: none;
+    transition: transform 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.inv-slot:hover .mc-item-icon {
+    transform: scale(1.18);
+}
+
+.modal-item-icon {
+    width: 28px;
+    height: 28px;
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+    vertical-align: middle;
+    margin-right: 6px;
 }
 
 .inv-slot-count {
