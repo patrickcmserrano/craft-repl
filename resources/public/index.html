@@ -12,10 +12,10 @@
     <header>
         <div class="header-title">
             <h1>🎮 MC Companion Pro</h1>
-            <p>GPS Radar • Live Inventory • BlueMap 3D</p>
+            <p>BlueMap 3D • Live Inventory • Companion</p>
         </div>
         <div style="display:flex; gap:8px; align-items:center;">
-            <a id="headerBlueMapLink" href="/map/" target="_blank" class="btn btn-sm btn-cyan" style="text-decoration:none; padding:4px 10px; font-size:0.75rem; font-weight:700;">🌐 BlueMap 3D ↗</a>
+            <a id="headerBlueMapLink" href="/map/" target="_blank" class="btn btn-sm btn-cyan" style="text-decoration:none; padding:4px 10px; font-size:0.75rem; font-weight:700;">🌐 BlueMap ↗</a>
             <div id="serverBadge" class="badge-live">VERIFICANDO...</div>
         </div>
     </header>
@@ -29,44 +29,28 @@
         </div>
     </div>
 
-    <!-- TAB 1: RADAR GPS (MINIMAP), BLUEMAP 3D & WAYPOINTS -->
+    <!-- TAB 1: BLUEMAP 3D & WAYPOINTS -->
     <div id="tab-gps" class="tab-content active">
         <div class="section">
             <div class="section-header">
+                <span style="font-size:0.85rem; font-weight:800; color:#38bdf8;">🌐 BlueMap 3D em Tempo Real</span>
                 <div style="display:flex; gap:6px;">
-                    <button id="viewBtnRadar" class="btn btn-sm btn-cyan" style="padding:4px 8px; font-size:0.75rem;" onclick="setMapView('radar')">🛰️ Radar GPS</button>
-                    <button id="viewBtnBlueMap" class="btn btn-sm" style="background:var(--surface); padding:4px 8px; font-size:0.75rem;" onclick="setMapView('bluemap')">🌐 BlueMap 3D</button>
+                    <button class="btn btn-sm btn-cyan" onclick="openBlueMapExternal()">↗️ Tela Cheia</button>
+                    <button class="btn btn-sm btn-purple" onclick="refreshBlueMap()">🔄 Atualizar</button>
                 </div>
-                <span id="gpsDistance" style="color:#60a5fa; font-weight:700;">Conectando...</span>
             </div>
             
-            <!-- RADAR CANVAS VIEW -->
-            <div id="radarViewWrap" class="radar-container">
-                <canvas id="radarCanvas" width="360" height="340"></canvas>
-                <div class="radar-controls">
-                    <button class="btn btn-sm btn-cyan" onclick="changeZoom(-0.5)">🔍 - Menos</button>
-                    <button class="btn btn-sm btn-cyan" onclick="changeZoom(0.5)">🔍 + Mais</button>
-                    <button id="radarBtnCenterMe" class="btn btn-sm btn-purple" onclick="centerOnMe()">🎯 Focar em Mim</button>
-                    <button id="radarBtnCenterPartner" class="btn btn-sm btn-purple" onclick="centerOnPartner()">🎯 Focar no Parceiro</button>
-                    <button class="btn btn-sm btn-green" onclick="centerOnBase()">🏠 Base</button>
-                </div>
-                <div class="radar-tele-bar" id="radarTeleBar">
-                    <span>⚔️ Pace: [-146, -85]</span>
-                    <span>🌸 Liz: [-146, -85]</span>
-                </div>
-            </div>
-
-            <!-- BLUEMAP 3D IFRAME VIEW -->
-            <div id="blueMapViewWrap" class="radar-container" style="display:none; padding:8px;">
-                <iframe id="blueMapIframe" src="" style="width:100%; height:460px; border:none; border-radius:12px; background:#0b1528;"></iframe>
-                <div class="radar-controls" style="margin-top:8px;">
-                    <button class="btn btn-sm btn-cyan" onclick="openBlueMapExternal()">↗️ Tela Cheia (Nova Aba)</button>
-                    <button class="btn btn-sm btn-purple" onclick="refreshBlueMap()">🔄 Recarregar 3D</button>
+            <!-- BLUEMAP 3D CONTAINER -->
+            <div id="blueMapViewWrap" class="radar-container" style="padding:6px; background:#040810;">
+                <iframe id="blueMapIframe" src="/map/" style="width:100%; height:480px; border:none; border-radius:12px; background:#0b1528;" allowfullscreen></iframe>
+                <div class="radar-tele-bar" id="radarTeleBar" style="margin-top:6px;">
+                    <span>⚔️ Pace: [-146, 107, -85]</span>
+                    <span>🌸 Liz: [-146, 107, -85]</span>
                 </div>
             </div>
         </div>
         
-        <!-- TELEPORTE RÁPIDO DO GPS -->
+        <!-- TELEPORTE RÁPIDO DO MAPA -->
         <div class="section">
             <div class="grid">
                 <button id="btnGpsHome" class="btn btn-teleport" onclick="teleportToHome()">🏠 Minha Base (-146, 107, -85)</button>
@@ -311,8 +295,8 @@
     <!-- BOTTOM TAB BAR (5 ABAS COMPACTAS) -->
     <nav class="tab-bar">
         <button class="tab-btn active" onclick="switchTab('gps', this)">
-            <span class="tab-icon">🗺️</span>
-            <span>Mapa</span>
+            <span class="tab-icon">🌐</span>
+            <span>BlueMap</span>
         </button>
         <button class="tab-btn" onclick="switchTab('inventory', this)">
             <span class="tab-icon">🎒</span>
