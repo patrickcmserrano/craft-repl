@@ -49,5 +49,11 @@ attach: jar
 repl:
 	clojure -M -e "(require '[nrepl.cmdline]) (nrepl.cmdline/-main \"--connect\" \"--host\" \"127.0.0.1\" \"--port\" \"$(PORT)\")"
 
+test:
+	clojure -M:test -m craft.test-runner
+
+test-live:
+	clojure -M:test -m craft.smoke-live
+
 clean:
 	rm -rf target .cpcache

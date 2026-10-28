@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Minecraft Companion Pro</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/dashboard.css">
+</head>
+<body>
+    <header>
+        <div class="header-title">
+            <h1>🎮 MC Companion Pro</h1>
+            <p>GPS Radar • Live Inventory • BlueMap 3D</p>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+            <a id="headerBlueMapLink" href="/map/" target="_blank" class="btn btn-sm btn-cyan" style="text-decoration:none; padding:4px 10px; font-size:0.75rem; font-weight:700;">🌐 BlueMap 3D ↗</a>
+            <div id="serverBadge" class="badge-live">VERIFICANDO...</div>
+        </div>
+    </header>
+
+    <!-- BARRA DE SELEÇÃO DE PERFIL DO JOGADOR -->
+    <div class="profile-bar">
+        <span class="profile-label">👤 Jogando como:</span>
+        <div class="profile-pills">
+            <button id="profileBtnPace" class="profile-btn active-pace" onclick="setProfile('pace')">⚔️ Sou o Pace</button>
+            <button id="profileBtnLizzie" class="profile-btn" onclick="setProfile('lizzie')">🌸 Sou a Lizzie</button>
+        </div>
+    </div>
+
+    <!-- TAB 1: RADAR GPS (MINIMAP), BLUEMAP 3D & WAYPOINTS -->
+    <div id="tab-gps" class="tab-content active">
+        <div class="section">
+            <div class="section-header">
+                <div style="display:flex; gap:6px;">
+                    <button id="viewBtnRadar" class="btn btn-sm btn-cyan" style="padding:4px 8px; font-size:0.75rem;" onclick="setMapView('radar')">🛰️ Radar GPS</button>
+                    <button id="viewBtnBlueMap" class="btn btn-sm" style="background:var(--surface); padding:4px 8px; font-size:0.75rem;" onclick="setMapView('bluemap')">🌐 BlueMap 3D</button>
+                </div>
+                <span id="gpsDistance" style="color:#60a5fa; font-weight:700;">Conectando...</span>
+            </div>
+            
+            <!-- RADAR CANVAS VIEW -->
+            <div id="radarViewWrap" class="radar-container">
+                <canvas id="radarCanvas" width="360" height="340"></canvas>
+                <div class="radar-controls">
+                    <button class="btn btn-sm btn-cyan" onclick="changeZoom(-0.5)">🔍 - Menos</button>
+                    <button class="btn btn-sm btn-cyan" onclick="changeZoom(0.5)">🔍 + Mais</button>
+                    <button id="radarBtnCenterMe" class="btn btn-sm btn-purple" onclick="centerOnMe()">🎯 Focar em Mim</button>
+                    <button id="radarBtnCenterPartner" class="btn btn-sm btn-purple" onclick="centerOnPartner()">🎯 Focar no Parceiro</button>
+                    <button class="btn btn-sm btn-green" onclick="centerOnBase()">🏠 Base</button>
+                </div>
+                <div class="radar-tele-bar" id="radarTeleBar">
+                    <span>⚔️ Pace: [-146, -85]</span>
+                    <span>🌸 Liz: [-146, -85]</span>
+                </div>
+            </div>
+
+            <!-- BLUEMAP 3D IFRAME VIEW -->
+            <div id="blueMapViewWrap" class="radar-container" style="display:none; padding:8px;">
+                <iframe id="blueMapIframe" src="" style="width:100%; height:460px; border:none; border-radius:12px; background:#0b1528;"></iframe>
+                <div class="radar-controls" style="margin-top:8px;">
+                    <button class="btn btn-sm btn-cyan" onclick="openBlueMapExternal()">↗️ Tela Cheia (Nova Aba)</button>
+                    <button class="btn btn-sm btn-purple" onclick="refreshBlueMap()">🔄 Recarregar 3D</button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- TELEPORTE RÁPIDO DO GPS -->
+        <div class="section">
+            <div class="grid">
+                <button id="btnGpsHome" class="btn btn-teleport" onclick="teleportToHome()">🏠 Minha Base (-146, 107, -85)</button>
+                <button id="btnGpsPull" class="btn btn-purple" onclick="pullPartner()">🧲 Puxar Parceiro até Mim</button>
+            </div>
+        </div>
+
+        <!-- PONTOS DE VIAGEM RÁPIDA (INTEGRADO AO MAPA) -->
+        <div class="section">
+            <details class="accordion" open>
+                <summary>
+                    <span>📍 Pontos de Viagem Rápida</span>
+                    <button class="btn btn-sm btn-green" style="margin-right:12px;" onclick="event.stopPropagation(); saveCurrentAsWaypoint()">+ Salvar Ponto</button>
+                </summary>
+                <div class="accordion-body">
+                    <div id="waypointList"></div>
+                </div>
+            </details>
+        </div>
+    </div>
+
+    <!-- TAB 2: INVENTÁRIO AO VIVO -->
+    <div id="tab-inventory" class="tab-content">
+        <div class="section">
+            <div class="player-selector">
+                <button id="btnPace" class="active" onclick="selectPlayer('pace')">⚔️ Pace</button>
+                <button id="btnLizzie" onclick="selectPlayer('lizzie')">🌸 Lizzie</button>
+            </div>
+
+            <div class="inv-box">
+                <div class="inv-header">
+                    <div>
+                        <span id="invPlayerTitle" style="font-weight:700; font-size:0.9rem;">Inventário</span>
+                        <div id="invPlayerStatus" style="font-size:0.75rem; color:#ef4444; margin-top:2px;">❤️ 20.0 | 🍗 20/20 | ⭐ Lv.0</div>
+                    </div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                        <button id="btnQuickRepair" class="btn btn-sm btn-green" onclick="repairGearAction()" title="Restaura 100% da durabilidade de ferramentas, armas e armaduras">🛠️ Fixar Gear</button>
+                        <button id="btnQuickDeposit" class="btn btn-sm btn-purple" onclick="depositLootAction()" title="Envia minérios, pedras, madeiras, comida e drops para os baús certos">📦 Aos Baús</button>
+                        <button class="btn btn-sm btn-cyan" onclick="loadInventory()">🔄 Atualizar</button>
+                    </div>
+                </div>
+
+                <!-- ARMOR & OFFHAND ROW -->
+                <div class="armor-row" id="armorRow"></div>
+
+                <!-- MAIN INVENTORY (27 SLOTS) -->
+                <div style="font-size:0.65rem; color:var(--text-muted); margin-bottom:4px; font-weight:700;">MOCHILA (27 SLOTS)</div>
+                <div class="inv-grid-9" id="mainGrid"></div>
+
+                <div class="inv-divider"></div>
+
+                <!-- HOTBAR (9 SLOTS) -->
+                <div class="hotbar-label">HOTBAR ATIVA (9 SLOTS)</div>
+                <div class="inv-grid-9" id="hotbarGrid"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: CONTROLE & SOBREVIVÊNCIA -->
+    <div id="tab-quick" class="tab-content">
+        <!-- CLIMA & TEMPO -->
+        <div class="section">
+            <div class="section-header">☀️ Clima & Ciclo Solar</div>
+            <div class="grid">
+                <button class="btn btn-amber" onclick="runCmd('time set day')">☀️ Dia</button>
+                <button class="btn btn-purple" onclick="runCmd('time set night')">🌙 Noite</button>
+                <button class="btn btn-cyan grid-full" onclick="runCmd('weather clear')">🌈 Limpar Chuva</button>
+            </div>
+        </div>
+
+        <!-- SAÚDE & KITS DE SOBREVIVÊNCIA -->
+        <div class="section">
+            <div class="section-header">💚 Saúde & Kits Táticos</div>
+            <div class="grid">
+                <button id="btnHealMe" class="btn btn-green" onclick="healPlayer('me')">💚 Curar a Mim</button>
+                <button class="btn btn-green" onclick="healPlayer('all')">💚 Curar Ambos</button>
+                <button id="btnVisionMe" class="btn btn-cyan" onclick="visionPlayer('me')">👁️ Visão Noturna (Eu)</button>
+                <button class="btn btn-cyan" onclick="visionPlayer('all')">👁️ Visão Noturna (Ambos)</button>
+                <button id="btnFlyKitMe" class="btn btn-purple" onclick="giveFlightKit('me')">🪽 Kit Voo para Mim</button>
+                <button class="btn btn-purple" onclick="giveFlightKit('all')">🪽 Kit Voo para Ambos</button>
+                <button id="btnSniperMe" class="btn btn-red" onclick="giveSniperKit('me')">🎯 Kit Sniper (Eu)</button>
+                <button class="btn btn-red" onclick="giveSniperKit('all')">🎯 Kit Sniper (Ambos)</button>
+                <button id="btnQuickGoto" class="btn btn-cyan grid-full" onclick="gotoPartner()">🏃 Ir até Parceiro</button>
+                <button id="btnQuickGolem" class="btn btn-purple grid-full" onclick="rescueGolem()">🤖 Puxar Guardião até Mim</button>
+            </div>
+        </div>
+
+        <!-- DEFESA & EXPURGO SUBTERRÂNEO -->
+        <div class="section">
+            <div class="section-header">🛡️ Defesa da Base</div>
+            <div class="grid">
+                <button class="btn btn-purple grid-full" onclick="purgeUndergroundMonstersAction()">🧹 Expurgo de Monstros Subterrâneos (Base / Cavernas)</button>
+            </div>
+        </div>
+
+        <!-- ARTILHARIA & DEMOLIÇÃO TÁTICA -->
+        <div class="section">
+            <details class="accordion">
+                <summary>
+                    <span>💥 Artilharia & Demolição Tática</span>
+                    <span id="nukeSafetyBadge" style="font-size:0.7rem; font-weight:700; margin-right:8px;">Calculando distância...</span>
+                </summary>
+                <div class="accordion-body">
+                    <div class="grid">
+                        <button id="btnQuickInstaTnt" class="btn btn-red grid-full" onclick="triggerInstaTnt()">💥 Lançar Insta-TNT à Frente (11m, com Escudo)</button>
+                        <button id="btnQuickNuke" class="btn btn-red grid-full" style="background: linear-gradient(135deg, #7f1d1d, #b91c1c); border: 1px solid #ef4444; font-weight: bold;" onclick="triggerNukeStrike()">☢️ DISPARAR ATAQUE NUCLEAR (NUKE)</button>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- SKINS CUSTOMIZADAS OFFLINE -->
+        <div class="section">
+            <div class="section-header">🎨 Skins Offline & Backups</div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:12px;">
+                <div style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                    <img src="/skins/pace.png" style="width:40px; height:40px; image-rendering:pixelated; border-radius:4px; border:1px solid #555;" alt="Pace">
+                    <div style="font-size:11px; overflow:hidden;">
+                        <div style="font-weight:bold; color:#a78bfa;">Pace (Offline)</div>
+                        <div style="color:#888; font-size:10px;">Backup ativo</div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; background:rgba(0,0,0,0.3); padding:8px; border-radius:8px; border:1px solid rgba(255,255,255,0.05);">
+                    <img src="/skins/lizzie.png" style="width:40px; height:40px; image-rendering:pixelated; border-radius:4px; border:1px solid #555;" alt="Lizzie">
+                    <div style="font-size:11px; overflow:hidden;">
+                        <div style="font-weight:bold; color:#ec4899;">Lizzie (Offline)</div>
+                        <div style="color:#888; font-size:10px;">Backup ativo</div>
+                    </div>
+                </div>
+            </div>
+            <div class="grid">
+                <button id="btnSkinMe" class="btn btn-purple" onclick="applySkin('me')">⚡ Minha Skin</button>
+                <button id="btnSkinPartner" class="btn btn-cyan" onclick="applySkin('partner')">⚡ Skin do Parceiro</button>
+                <button class="btn btn-green" onclick="runCmd('skin-backup')">💾 Salvar / Backup Skins</button>
+                <button class="btn btn-amber" onclick="customSkinPrompt()">🌐 Importar Outro Nick</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: OBRAS & CONSTRUÇÕES INSTANTÂNEAS (NOVA ABA DEDICADA) -->
+    <div id="tab-builds" class="tab-content">
+        <!-- BLUEPRINTS 3D -->
+        <details class="accordion" open>
+            <summary>🏛️ Blueprints 3D da Casa Principal</summary>
+            <div class="accordion-body">
+                <div class="grid">
+                    <button class="btn btn-purple grid-full" onclick="backupBlueprintAction()">🏛️ Salvar Blueprint 3D da Base (NBT + JSON)</button>
+                    <button class="btn btn-cyan grid-full" onclick="pasteStructureAction()">📋 Colar Casa Principal no Local Atual</button>
+                    <button id="btnUndoPaste" class="btn btn-amber grid-full" onclick="undoPasteAction()" style="display:none;">↩️ Desfazer Última Colagem da Casa</button>
+                    <button class="btn btn-amber grid-full" onclick="restoreBlueprintAction()">🔄 Restaurar Casa Original do Blueprint</button>
+                </div>
+            </div>
+        </details>
+
+        <!-- CASAS PARAMÉTRICAS -->
+        <details class="accordion" open>
+            <summary>🏠 Casas & Chalés Paramétricos</summary>
+            <div class="accordion-body">
+                <div class="grid">
+                    <button class="btn btn-purple grid-full" onclick="promptCustomHouse()">🏠 Construtor Visual de Casas (Madeiras & Medidas)</button>
+                    <button class="btn btn-green" onclick="buildPresetHouse('cherry', 9, 11, 4)">🌸 Casa Cerejeira (9x11)</button>
+                    <button class="btn btn-amber" onclick="buildPresetHouse('spruce', 9, 11, 4)">🌲 Chalé Pinheiro (9x11)</button>
+                    <button id="btnUndoHouse" class="btn btn-amber grid-full" onclick="undoCustomHouseAction()" style="display:none;">↩️ Desfazer Última Casa</button>
+                </div>
+            </div>
+        </details>
+
+        <!-- TERRENO & MOBILIDADE -->
+        <details class="accordion">
+            <summary>🧱 Terreno, Mobilidade & Emergência</summary>
+            <div class="accordion-body">
+                <div class="grid">
+                    <button class="btn btn-cyan" onclick="buildStonePlatform()">🧱 Plataforma Pedra (10x10)</button>
+                    <button class="btn btn-green" onclick="buildGrassPlatform()">🌱 Plataforma Grama (10x10)</button>
+                    <button class="btn btn-cyan grid-full" onclick="buildRamp()">🪜 Escadaria / Rampa (15m)</button>
+                    <button class="btn btn-cyan grid-full" onclick="buildBunker()">🏰 Domo / Bunker Blindado de Vidro</button>
+                    <button class="btn btn-purple grid-full" onclick="buildMineShaft()">🌀 Poço de Mina Seguro c/ Elevador de Bolhas</button>
+                    <button class="btn btn-purple grid-full" onclick="buildLaunchTower()">🪽 Torre Lançadora de Elytra (Y:160)</button>
+                    <button class="btn btn-amber" onclick="buildPlateau()">🧹 Nivelar Platô (21x21)</button>
+                    <button class="btn btn-amber" onclick="buildBridge()">🌉 Ponte Rápida</button>
+                </div>
+            </div>
+        </details>
+
+        <!-- OFICINAS & MONUMENTOS -->
+        <details class="accordion">
+            <summary>✨ Oficinas, Monumentos & Mística</summary>
+            <div class="accordion-body">
+                <div class="grid">
+                    <button class="btn btn-green grid-full" onclick="buildEnchantingSanctuary()">✨ Altar Encantamentos Lv.30 (+Lápis/Bigorna)</button>
+                    <button class="btn btn-green grid-full" onclick="buildWorkshop()">⚒️ Mini-Oficina Completa (Fornos/Baús/Bancadas)</button>
+                    <button class="btn btn-amber grid-full" onclick="buildLightingGrid()">💡 Rede Anti-Monstros 31x31 (9 Postes)</button>
+                    <button class="btn btn-purple grid-full" onclick="buildEndermanTotemAction()">🔮 Erigir Obelisco Anti-Enderman (45m)</button>
+                    <button id="btnUndoTotem" class="btn btn-amber grid-full" onclick="undoEndermanTotemAction()" style="display:none;">↩️ Desfazer Obelisco</button>
+                    <button class="btn btn-green grid-full" onclick="buildThermalPoolAction()">♨️ Erigir Piscina Termal Curativa (Regen II)</button>
+                    <button id="btnUndoPool" class="btn btn-amber grid-full" onclick="undoThermalPoolAction()" style="display:none;">↩️ Desfazer Piscina Termal</button>
+                    <button class="btn btn-amber grid-full" onclick="buildPyramid()">🏛️ Erigir Grande Pirâmide no Deserto</button>
+                    <button class="btn btn-cyan" onclick="buildCamp()">⛺ Acampamento</button>
+                    <button class="btn btn-green" onclick="buildFarm()">🌾 Mini-Horta</button>
+                    <button class="btn btn-purple grid-full" onclick="buildTower()">🗼 Torre de Vigia</button>
+                </div>
+            </div>
+        </details>
+    </div>
+
+    <!-- TAB 5: SUPRIMENTOS & NUVEM (AIRDROP, BACKUPS, CONSOLE) -->
+    <div id="tab-vault" class="tab-content">
+        <!-- AIRDROP -->
+        <div class="section">
+            <div id="airdropHeaderTitle" class="section-header">🎁 AirDrop Imediato para Parceiro</div>
+            <div class="grid">
+                <button class="btn btn-green" onclick="airdropItem('cooked_beef', 16)">🥩 16x Bifes</button>
+                <button class="btn btn-amber" onclick="airdropItem('torch', 32)">🕯️ 32x Tochas</button>
+                <button class="btn btn-cyan" onclick="airdropItem('water_bucket', 1)">🪣 Balde d'Água</button>
+                <button class="btn btn-purple" onclick="airdropItem('golden_apple', 2)">🍏 2x Maçãs Douradas</button>
+                <button class="btn btn-purple" onclick="giveFlightKit('partner')">🪽 Kit de Voo (Elytra+64)</button>
+                <button class="btn btn-amber" onclick="airdropItem('bread', 16)">🥖 16x Pães</button>
+                <button class="btn btn-amber" onclick="airdropItem('tnt', 16)">💣 16x TNT</button>
+                <button class="btn btn-amber" onclick="airdropItem('flint_and_steel', 1)">🔥 Isqueiro</button>
+                <button id="btnAirdropSniper" class="btn btn-red grid-full" onclick="giveSniperKit('partner')">🎯 AirDrop Kit Sniper FPS para Parceiro</button>
+            </div>
+        </div>
+
+        <!-- BACKUPS DO MUNDO -->
+        <div class="section">
+            <div class="section-header">💾 Snapshots de Backup do Mundo</div>
+            <div class="grid">
+                <button class="btn btn-green grid-full" onclick="triggerBackup()">💾 Criar Snapshot de Backup Completo do Mundo</button>
+            </div>
+        </div>
+
+        <!-- TERMINAL LIVRE -->
+        <div class="section">
+            <div class="section-header">⌨️ Terminal Livre de Comandos</div>
+            <div style="display:flex; gap:6px;">
+                <input type="text" id="customCmd" placeholder="ex: time set day" style="flex:1; background:var(--surface); border:1px solid var(--border); color:#fff; padding:10px; border-radius:8px; font-family:'JetBrains Mono',monospace; font-size:0.85rem;" onkeydown="if(event.key==='Enter') runCustomCmd()">
+                <button class="btn btn-sm btn-cyan" onclick="runCustomCmd()">Enviar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- BOTTOM TAB BAR (5 ABAS COMPACTAS) -->
+    <nav class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab('gps', this)">
+            <span class="tab-icon">🗺️</span>
+            <span>Mapa</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('inventory', this)">
+            <span class="tab-icon">🎒</span>
+            <span>Inventário</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('quick', this)">
+            <span class="tab-icon">⚡</span>
+            <span>Controle</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('builds', this)">
+            <span class="tab-icon">🏗️</span>
+            <span>Obras</span>
+        </button>
+        <button class="tab-btn" onclick="switchTab('vault', this)">
+            <span class="tab-icon">📦</span>
+            <span>Suprimentos</span>
+        </button>
+    </nav>
+
+    <!-- TOAST NOTIFICATION -->
+    <div id="toast">⚡ Comando executado!</div>
+
+    <!-- MODAL 1: CONSTRUTOR VISUAL DE CASAS -->
+    <dialog id="modalCustomHouse" class="modal-sheet">
+        <div class="modal-header">
+            <div class="modal-title">🏠 Construtor de Casas Paramétricas</div>
+            <button class="modal-close" onclick="closeCustomHouseModal()">✕</button>
+        </div>
+        <div style="margin-bottom:12px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:700;">1. TIPO DE MADEIRA:</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-sm wood-choice-btn btn-cyan" onclick="selectHouseWood('cherry', this)">🌸 Cerejeira</button>
+                <button class="btn btn-sm wood-choice-btn" onclick="selectHouseWood('spruce', this)">🌲 Pinheiro</button>
+                <button class="btn btn-sm wood-choice-btn" onclick="selectHouseWood('oak', this)">🪵 Carvalho</button>
+                <button class="btn btn-sm wood-choice-btn" onclick="selectHouseWood('bamboo', this)">🎋 Bambu</button>
+                <button class="btn btn-sm wood-choice-btn" onclick="selectHouseWood('birch', this)">🍁 Bétula</button>
+                <button class="btn btn-sm wood-choice-btn" onclick="selectHouseWood('dark_oak', this)">🌑 Carvalho Escuro</button>
+                <button class="btn btn-sm wood-choice-btn" onclick="selectHouseWood('mangrove', this)">🌿 Mangue</button>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:12px;">
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">LARGURA (X):</label>
+                <input id="inputHouseWidth" type="number" min="5" max="35" value="9" style="width:100%; padding:8px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px; font-size:0.9rem;">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">PROFUNDIDADE (Z):</label>
+                <input id="inputHouseLength" type="number" min="5" max="35" value="11" style="width:100%; padding:8px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px; font-size:0.9rem;">
+            </div>
+            <div>
+                <label style="font-size:0.7rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">ALTURA (Y):</label>
+                <input id="inputHouseHeight" type="number" min="3" max="12" value="4" style="width:100%; padding:8px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px; font-size:0.9rem;">
+            </div>
+        </div>
+        <div style="margin-bottom:16px;">
+            <div style="font-size:0.75rem; color:var(--text-muted); margin-bottom:6px; font-weight:700;">2. ORIENTAÇÃO DA FACHADA:</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-sm dir-choice-btn btn-cyan" onclick="selectHouseDir('auto', this)">🎯 Auto (Minha Mira)</button>
+                <button class="btn btn-sm dir-choice-btn" onclick="selectHouseDir('north', this)">🧭 Norte (-Z)</button>
+                <button class="btn btn-sm dir-choice-btn" onclick="selectHouseDir('south', this)">🧭 Sul (+Z)</button>
+                <button class="btn btn-sm dir-choice-btn" onclick="selectHouseDir('east', this)">🧭 Leste (+X)</button>
+                <button class="btn btn-sm dir-choice-btn" onclick="selectHouseDir('west', this)">🧭 Oeste (-X)</button>
+            </div>
+        </div>
+        <div class="grid">
+            <button class="btn btn-green grid-full" onclick="submitCustomHouseModal()">🏗️ Construir Casa Agora</button>
+        </div>
+    </dialog>
+
+    <!-- MODAL 2: AÇÕES DO ITEM DO INVENTÁRIO -->
+    <dialog id="modalItemAction" class="modal-sheet">
+        <div class="modal-header">
+            <div id="modalItemTitle" class="modal-title">Item Selecionado</div>
+            <button class="modal-close" onclick="closeItemModal()">✕</button>
+        </div>
+        <div id="modalItemInfo" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;"></div>
+        <div class="grid">
+            <button id="modalItemBtnAirdrop" class="btn btn-green grid-full" onclick="executeItemAirdrop()">🎁 AirDrop para Parceiro</button>
+            <button class="btn btn-purple grid-full" onclick="executeItemVault()">🎒 Guardar no Vault (Nuvem)</button>
+            <button class="btn btn-red grid-full" onclick="executeItemDiscard()">🗑️ Descartar Item</button>
+        </div>
+    </dialog>
+
+    <!-- MODAL 3: SALVAR WAYPOINT -->
+    <dialog id="modalWaypoint" class="modal-sheet">
+        <div class="modal-header">
+            <div class="modal-title">📍 Salvar Ponto no Radar</div>
+            <button class="modal-close" onclick="closeWaypointModal()">✕</button>
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Nome do Local:</label>
+            <input id="inputWaypointName" type="text" value="Novo Ponto" style="width:100%; padding:10px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px;">
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Coordenadas X Y Z:</label>
+            <input id="inputWaypointCoords" type="text" value="-146 107 -85" style="width:100%; padding:10px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px; font-family:'JetBrains Mono',monospace;">
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Ícone:</label>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn btn-sm wp-icon-btn btn-cyan" onclick="selectWaypointIcon('📍', this)">📍</button>
+                <button class="btn btn-sm wp-icon-btn" onclick="selectWaypointIcon('🏠', this)">🏠</button>
+                <button class="btn btn-sm wp-icon-btn" onclick="selectWaypointIcon('⛏️', this)">⛏️</button>
+                <button class="btn btn-sm wp-icon-btn" onclick="selectWaypointIcon('🏛️', this)">🏛️</button>
+                <button class="btn btn-sm wp-icon-btn" onclick="selectWaypointIcon('💎', this)">💎</button>
+                <button class="btn btn-sm wp-icon-btn" onclick="selectWaypointIcon('🌋', this)">🌋</button>
+                <button class="btn btn-sm wp-icon-btn" onclick="selectWaypointIcon('⛺', this)">⛺</button>
+            </div>
+        </div>
+        <div class="grid">
+            <button class="btn btn-green grid-full" onclick="submitWaypointModal()">💾 Salvar Ponto</button>
+        </div>
+    </dialog>
+
+    <!-- MODAL 4: IMPORTAR SKIN -->
+    <dialog id="modalSkin" class="modal-sheet">
+        <div class="modal-header">
+            <div class="modal-title">🎨 Importar Skin do Minecraft</div>
+            <button class="modal-close" onclick="closeSkinModal()">✕</button>
+        </div>
+        <div style="margin-bottom:10px;">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Aplicar em:</label>
+            <select id="inputSkinPlayer" style="width:100%; padding:10px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px;">
+                <option value="pace">Pace</option>
+                <option value="Lizzie">Lizzie</option>
+            </select>
+        </div>
+        <div style="margin-bottom:14px;">
+            <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Nick Original (ex: M0r7eM, Technoblade):</label>
+            <input id="inputSkinNick" type="text" placeholder="M0r7eM" style="width:100%; padding:10px; background:var(--surface); border:1px solid var(--border); color:#fff; border-radius:8px;">
+        </div>
+        <div class="grid">
+            <button class="btn btn-cyan grid-full" onclick="submitSkinModal()">🎨 Aplicar Skin</button>
+        </div>
+    </dialog>
+
+    <!-- SCRIPTS -->
+    <script src="/js/api.js"></script>
+    <script src="/js/radar.js"></script>
+    <script src="/js/actions.js"></script>
+    <script>
+        // Inicialização
+        initRadarEvents();
+        initProfile();
+        fetchTelemetry();
+        loadWaypoints();
+
+        // Loop de sincronização em tempo real (GPS e Inventário)
+        setInterval(() => {
+            if (currentTab === 'gps') fetchTelemetry();
+            if (currentTab === 'inventory') loadInventory();
+        }, 2000);
+    </script>
+</body>
+</html>

@@ -53,7 +53,7 @@
                          ~@body
                          (catch Throwable t#
                            (println "[craft.core] Erro na execução no ServerThread:"
-                                    (.getMessage t#))))))))))
+                                    (.getMessage t#)))))))))))
 
 (defn run-command!
   "Executa um comando de console no servidor Minecraft."
