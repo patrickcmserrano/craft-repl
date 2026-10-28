@@ -17,7 +17,7 @@ public class SkinRestorer {
         try {
             File metaFile = new File("/home/pace/minecraft-server/skins/" + skinName.toLowerCase() + "_meta.json");
             if (!metaFile.exists()) {
-                metaFile = new File("/home/pace/minecraft-server/skins/pace_meta.json");
+                metaFile = new File("/home/pace/minecraft-server/skins/" + skinName.toLowerCase() + ".json");
             }
             if (!metaFile.exists()) {
                 System.err.println("[SkinRestorer] Arquivo não encontrado: " + metaFile.getAbsolutePath());
@@ -33,11 +33,11 @@ public class SkinRestorer {
 
             int valStart = json.indexOf("\"value\": \"") + 10;
             int valEnd = json.indexOf("\"", valStart);
-            String value = json.substring(valStart, valEnd);
+            final String value = json.substring(valStart, valEnd);
 
             int sigStart = json.indexOf("\"signature\": \"") + 14;
             int sigEnd = json.indexOf("\"", sigStart);
-            String sig = (sigStart > 13 && sigEnd > sigStart) ? json.substring(sigStart, sigEnd) : "";
+            final String sig = (sigStart > 13 && sigEnd > sigStart) ? json.substring(sigStart, sigEnd) : "";
 
             Object server = null;
             for (Thread t : Thread.getAllStackTraces().keySet()) {
@@ -78,7 +78,7 @@ public class SkinRestorer {
             }
 
             if (players == null) return;
-            for (Object p : players) {
+            for (final Object p : players) {
                 Method getProfile = null;
                 for (Method pm : p.getClass().getMethods()) {
                     if (pm.getParameterCount() == 0 && (pm.getName().equals("getGameProfile") || pm.getReturnType().getName().contains("GameProfile"))) {
@@ -92,24 +92,43 @@ public class SkinRestorer {
                 if (pName.equalsIgnoreCase(targetPlayer)) {
                     System.out.println("[SkinRestorer] Jogador alvo encontrado no servidor: " + pName);
 
-                    // Chamar fabrictailor_setSkin(String value, String signature, boolean reload)
-                    boolean applied = false;
+                    Method setSkinMethod = null;
                     for (Method sm : p.getClass().getMethods()) {
                         if (sm.getName().contains("fabrictailor_setSkin") && sm.getParameterCount() == 3) {
                             Class<?>[] pTypes = sm.getParameterTypes();
                             if (pTypes[0] == String.class && pTypes[1] == String.class) {
-                                sm.invoke(p, value, sig, Boolean.TRUE);
-                                applied = true;
-                                System.out.println("[SkinRestorer] ✅ fabrictailor_setSkin(value, sig, true) invocado com sucesso!");
+                                setSkinMethod = sm;
                                 break;
                             }
                         }
                     }
 
-                    if (!applied) {
-                        System.err.println("[SkinRestorer] Método fabrictailor_setSkin(String, String, boolean) não encontrado.");
-                    } else {
+                    if (setSkinMethod != null) {
+                        final Method fSetSkin = setSkinMethod;
+                        final Object fServer = server;
+                        Method execMethod = null;
+                        for (Method m : fServer.getClass().getMethods()) {
+                            if (m.getName().equals("execute") && m.getParameterCount() == 1 && m.getParameterTypes()[0] == Runnable.class) {
+                                execMethod = m;
+                                break;
+                            }
+                        }
+
+                        if (execMethod != null) {
+                            execMethod.invoke(fServer, (Runnable) () -> {
+                                try {
+                                    fSetSkin.invoke(p, value, sig, Boolean.TRUE);
+                                    System.out.println("[SkinRestorer] ✅ fabrictailor_setSkin executado no Main Server Thread!");
+                                } catch (Throwable t) {
+                                    t.printStackTrace();
+                                }
+                            });
+                        } else {
+                            fSetSkin.invoke(p, value, sig, Boolean.TRUE);
+                        }
                         System.out.println("[SkinRestorer] 🎉 Skin restaurada com sucesso para " + pName + "!");
+                    } else {
+                        System.err.println("[SkinRestorer] Método fabrictailor_setSkin não encontrado.");
                     }
                     break;
                 }

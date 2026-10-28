@@ -1,0 +1,73 @@
+#!/usr/bin/env python3
+import sys
+import subprocess
+import time
+
+def build_pyramid(cx, cy, cz, radius=25):
+    cmds = []
+    # 1. Chão da base
+    cmds.append(f"fill {cx - radius} {cy} {cz - radius} {cx + radius} {cy} {cz + radius} smooth_sandstone")
+
+    # 2. Camadas escalonadas ocas
+    for i in range(1, radius + 1):
+        r = radius - i
+        y = cy + i
+        if r > 0:
+            cmds.append(f"fill {cx - r} {y} {cz - r} {cx + r} {y} {cz + r} sandstone hollow")
+        else:
+            cmds.append(f"setblock {cx} {y} {cz} gold_block")
+            cmds.append(f"setblock {cx} {y + 1} {cz} sea_lantern")
+
+    # 3. Portal de Entrada (Face Sul)
+    cmds.append(f"fill {cx - 2} {cy + 1} {cz + radius - 4} {cx + 2} {cy + 4} {cz + radius} air")
+    cmds.append(f"fill {cx - 3} {cy + 1} {cz + radius} {cx - 3} {cy + 5} {cz + radius} chiseled_sandstone")
+    cmds.append(f"fill {cx + 3} {cy + 1} {cz + radius} {cx + 3} {cy + 5} {cz + radius} chiseled_sandstone")
+    cmds.append(f"fill {cx - 3} {cy + 5} {cz + radius} {cx + 3} {cy + 5} {cz + radius} cut_sandstone")
+    cmds.append(f"setblock {cx - 3} {cy + 6} {cz + radius} soul_lantern")
+    cmds.append(f"setblock {cx + 3} {cy + 6} {cz + radius} soul_lantern")
+
+    # 4. Câmara Funerária Interna
+    cmds.append(f"fill {cx - 6} {cy + 1} {cz - 6} {cx + 6} {cy + 7} {cz + 6} air")
+    cmds.append(f"fill {cx - 5} {cy} {cz - 5} {cx + 5} {cy} {cz + 5} cut_sandstone")
+    for px in [-4, 4]:
+        for pz in [-4, 4]:
+            cmds.append(f"fill {cx + px} {cy + 1} {cz + pz} {cx + px} {cy + 6} {cz + pz} chiseled_sandstone")
+            cmds.append(f"setblock {cx + px} {cy + 7} {cz + pz} sea_lantern")
+
+    # Sarcófago central com tesouro do faraó
+    cmds.append(f"fill {cx - 1} {cy + 1} {cz - 2} {cx + 1} {cy + 1} {cz + 2} polished_blackstone_bricks")
+    cmds.append(f"setblock {cx} {cy + 2} {cz} chest[facing=north]{{LootTable:\"minecraft:chests/desert_pyramid\"}}")
+    cmds.append(f"setblock {cx} {cy + 2} {cz - 1} gold_block")
+    cmds.append(f"setblock {cx} {cy + 2} {cz + 1} gold_block")
+
+    # Efeitos de som e anúncio
+    cmds.append('title @a actionbar {"text":"§6🏛️ A Grande Pirâmide Antiga foi erguida!","bold":true}')
+    cmds.append('playsound minecraft:block.end_portal.spawn ambient @a')
+
+    print(f"🏗️ Erguendo pirâmide gigante em ({cx}, {cy}, {cz}) com raio {radius} ({2*radius+1}x{2*radius+1} blocos)...")
+    for cmd in cmds:
+        subprocess.run(["/home/pace/dev/craft-repl/scripts/mc", cmd], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(0.04)
+
+    # Registra waypoint
+    import json, os
+    wp_file = os.path.expanduser("~/.config/mc-cli/waypoints.json")
+    try:
+        with open(wp_file, "r") as f:
+            wps = json.load(f)
+        if not any(w["name"] == "Grande Pirâmide" for w in wps):
+            wps.append({"name": "Grande Pirâmide", "x": cx, "y": cy + 1, "z": cz + radius + 3, "icon": "🏛️"})
+            with open(wp_file, "w") as f:
+                json.dump(wps, f, indent=2)
+            print("📍 Waypoint '🏛️ Grande Pirâmide' registrado no Dashboard!")
+    except Exception as e:
+        print("Aviso waypoint:", e)
+
+    print("✅ Pirâmide construída com sucesso!")
+
+if __name__ == "__main__":
+    cx = int(sys.argv[1]) if len(sys.argv) > 1 else -160
+    cy = int(sys.argv[2]) if len(sys.argv) > 2 else 70
+    cz = int(sys.argv[3]) if len(sys.argv) > 3 else -160
+    radius = int(sys.argv[4]) if len(sys.argv) > 4 else 25
+    build_pyramid(cx, cy, cz, radius)
