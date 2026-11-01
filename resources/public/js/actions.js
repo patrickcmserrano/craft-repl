@@ -203,7 +203,9 @@ function openItemModal(item) {
 
 function closeItemModal() {
     const modal = document.getElementById('modalItemAction');
-    if (modal) modal.close();
+    if (modal) {
+        try { modal.close(); } catch (_) { modal.removeAttribute('open'); }
+    }
 }
 
 function executeItemAirdrop() {
@@ -699,7 +701,9 @@ function submitCustomHouseModal() {
 
 function closeCustomHouseModal() {
     const modal = document.getElementById('modalCustomHouse');
-    if (modal) modal.close();
+    if (modal) {
+        try { modal.close(); } catch (_) { modal.removeAttribute('open'); }
+    }
 }
 
 async function buildPresetHouse(wood, w, l, h, dir="auto") {
@@ -1425,7 +1429,9 @@ function submitWaypointModal() {
 
 function closeWaypointModal() {
     const modal = document.getElementById('modalWaypoint');
-    if (modal) modal.close();
+    if (modal) {
+        try { modal.close(); } catch (_) { modal.removeAttribute('open'); }
+    }
 }
 
 /* --- SKINS --- */
@@ -1447,7 +1453,9 @@ function submitSkinModal() {
     const player = document.getElementById('inputSkinPlayer').value || getMyNick();
     const nick = document.getElementById('inputSkinNick').value.trim();
     const modal = document.getElementById('modalSkin');
-    if (modal) modal.close();
+    if (modal) {
+        try { modal.close(); } catch (_) { modal.removeAttribute('open'); }
+    }
     if (nick) {
         runCmd(`skin ${player} ${nick}`);
         showToast(`🎨 Solicitando skin '${nick}' para ${player}...`);
@@ -1456,7 +1464,9 @@ function submitSkinModal() {
 
 function closeSkinModal() {
     const modal = document.getElementById('modalSkin');
-    if (modal) modal.close();
+    if (modal) {
+        try { modal.close(); } catch (_) { modal.removeAttribute('open'); }
+    }
 }
 
 /* --- BACKUPS & CONSOLE --- */
@@ -1484,5 +1494,48 @@ function runCustomCmd() {
         val = val.replace(/@s\b/g, getMyNick());
         runCmd(val);
         input.value = '';
+    }
+}
+
+/* --- MODAL BACKDROP & CLOSE HANDLERS --- */
+function initModalEvents() {
+    // 1. Fechar ao clicar no backdrop (fora do modal) ou com tecla Escape
+    document.querySelectorAll('dialog.modal-sheet').forEach(dialog => {
+        dialog.addEventListener('click', (event) => {
+            const rect = dialog.getBoundingClientRect();
+            const isInDialog = (
+                rect.top <= event.clientY &&
+                event.clientY <= rect.top + rect.height &&
+                rect.left <= event.clientX &&
+                event.clientX <= rect.left + rect.width
+            );
+            if (!isInDialog) {
+                try { dialog.close(); } catch (_) { dialog.removeAttribute('open'); }
+            }
+        });
+
+        dialog.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') {
+                try { dialog.close(); } catch (_) { dialog.removeAttribute('open'); }
+            }
+        });
+    });
+
+    // 2. Garantir que qualquer botão com classe modal-close ou btn-modal-cancel feche o dialog
+    document.querySelectorAll('.modal-close, .btn-modal-cancel').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const dlg = btn.closest('dialog');
+            if (dlg) {
+                try { dlg.close(); } catch (_) { dlg.removeAttribute('open'); }
+            }
+        });
+    });
+
+    // 3. Toast fechável ao toque
+    const toast = document.getElementById('toast');
+    if (toast) {
+        toast.addEventListener('click', () => toast.classList.remove('show'));
     }
 }

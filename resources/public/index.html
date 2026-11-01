@@ -465,6 +465,7 @@
         </div>
         <div class="grid">
             <button class="btn btn-green grid-full" onclick="submitCustomHouseModal()">🏗️ Construir Casa Agora</button>
+            <button type="button" class="btn btn-modal-cancel grid-full" onclick="closeCustomHouseModal()">✕ Cancelar / Fechar</button>
         </div>
     </dialog>
 
@@ -472,13 +473,14 @@
     <dialog id="modalItemAction" class="modal-sheet">
         <div class="modal-header">
             <div id="modalItemTitle" class="modal-title">Item Selecionado</div>
-            <button class="modal-close" onclick="closeItemModal()">✕</button>
+            <button type="button" class="modal-close" onclick="closeItemModal()" aria-label="Fechar">✕</button>
         </div>
         <div id="modalItemInfo" style="font-size:0.8rem; color:var(--text-muted); margin-bottom:14px;"></div>
         <div class="grid">
             <button id="modalItemBtnAirdrop" class="btn btn-green grid-full" onclick="executeItemAirdrop()">🎁 AirDrop para Parceiro</button>
             <button class="btn btn-purple grid-full" onclick="executeItemVault()">🎒 Guardar no Vault (Nuvem)</button>
             <button class="btn btn-red grid-full" onclick="executeItemDiscard()">🗑️ Descartar Item</button>
+            <button type="button" class="btn btn-modal-cancel grid-full" onclick="closeItemModal()">✕ Cancelar / Fechar</button>
         </div>
     </dialog>
 
@@ -486,7 +488,7 @@
     <dialog id="modalWaypoint" class="modal-sheet">
         <div class="modal-header">
             <div class="modal-title">📍 Salvar Ponto no Radar</div>
-            <button class="modal-close" onclick="closeWaypointModal()">✕</button>
+            <button type="button" class="modal-close" onclick="closeWaypointModal()" aria-label="Fechar">✕</button>
         </div>
         <div style="margin-bottom:10px;">
             <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Nome do Local:</label>
@@ -510,6 +512,7 @@
         </div>
         <div class="grid">
             <button class="btn btn-green grid-full" onclick="submitWaypointModal()">💾 Salvar Ponto</button>
+            <button type="button" class="btn btn-modal-cancel grid-full" onclick="closeWaypointModal()">✕ Cancelar / Fechar</button>
         </div>
     </dialog>
 
@@ -517,7 +520,7 @@
     <dialog id="modalSkin" class="modal-sheet">
         <div class="modal-header">
             <div class="modal-title">🎨 Importar Skin do Minecraft</div>
-            <button class="modal-close" onclick="closeSkinModal()">✕</button>
+            <button type="button" class="modal-close" onclick="closeSkinModal()" aria-label="Fechar">✕</button>
         </div>
         <div style="margin-bottom:10px;">
             <label style="font-size:0.75rem; color:var(--text-muted); display:block; margin-bottom:4px; font-weight:700;">Aplicar em:</label>
@@ -532,6 +535,7 @@
         </div>
         <div class="grid">
             <button class="btn btn-cyan grid-full" onclick="submitSkinModal()">🎨 Aplicar Skin</button>
+            <button type="button" class="btn btn-modal-cancel grid-full" onclick="closeSkinModal()">✕ Cancelar / Fechar</button>
         </div>
     </dialog>
 
@@ -543,6 +547,7 @@
         // Inicialização
         initRadarEvents();
         initProfile();
+        initModalEvents();
         fetchTelemetry();
         loadWaypoints();
 

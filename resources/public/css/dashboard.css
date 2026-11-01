@@ -607,11 +607,43 @@ dialog.modal-sheet::backdrop {
 }
 
 .modal-close {
-    background: none;
-    border: none;
-    color: var(--text-muted);
-    font-size: 1.3rem;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-size: 1.2rem;
     cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    user-select: none;
+}
+
+.modal-close:hover, .modal-close:active {
+    background: rgba(239, 68, 68, 0.3);
+    border-color: #ef4444;
+    color: #ef4444;
+}
+
+.btn-modal-cancel {
+    background: #1e293b !important;
+    border: 1px solid #475569 !important;
+    color: #cbd5e1 !important;
+    font-weight: 600 !important;
+    margin-top: 6px !important;
+    padding: 10px !important;
+    border-radius: 8px !important;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-modal-cancel:hover, .btn-modal-cancel:active {
+    background: #334155 !important;
+    color: #fff !important;
+    border-color: #94a3b8 !important;
 }
 
 /* TOAST */

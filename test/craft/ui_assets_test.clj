@@ -37,7 +37,8 @@
         (is (= 200 status))
         (is (re-find #"renderItemSlotContent" raw))
         (is (re-find #"giveWeaponKit" raw))
-        (is (re-find #"setWeaponTarget" raw))))
+        (is (re-find #"setWeaponTarget" raw))
+        (is (re-find #"initModalEvents" raw))))
 
     (testing "GET /textures/item/diamond_sword.png serves real Minecraft texture"
       (let [{:keys [status headers]} (th/http-get "/textures/item/diamond_sword.png")]
