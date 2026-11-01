@@ -64,6 +64,7 @@
                         (str/starts-with? sub "/home/pace/.local/bin/mc ") (subs sub (count "/home/pace/.local/bin/mc "))
                         (str/starts-with? sub "mc ") (subs sub 3)
                         :else sub)
+                  sub (str/replace sub #"(?i)(?<=^|\s)@s(?=\s|$)" (cfg/get-env "MC_PLAYER_NAME" "pace"))
                   sub (str/trim sub)]
               (if dry?
                 (do

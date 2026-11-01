@@ -300,6 +300,153 @@ function giveSniperKit(target) {
     showToast(`🎯 Kit Sniper FPS (.50 Cal Harming + Spectral) enviado para ${nick}!`);
 }
 
+/* --- ARSENAL DE ARMAS (JEG MOD & 1.21.1) --- */
+let currentWeaponTarget = 'me';
+
+function setWeaponTarget(target) {
+    currentWeaponTarget = target;
+    const btnMe = document.getElementById('btnWeaponTargetMe');
+    const btnPartner = document.getElementById('btnWeaponTargetPartner');
+    const btnAll = document.getElementById('btnWeaponTargetAll');
+    if (btnMe) btnMe.classList.toggle('btn-cyan', target === 'me');
+    if (btnPartner) btnPartner.classList.toggle('btn-cyan', target === 'partner');
+    if (btnAll) btnAll.classList.toggle('btn-cyan', target === 'all');
+}
+
+function giveWeaponKit(weaponType, target) {
+    const tgt = target || currentWeaponTarget || 'me';
+    const nick = tgt === 'all' ? '@a' : (tgt === 'partner' ? getPartnerNick() : getMyNick());
+    let cmds = [];
+    let title = '';
+
+    switch (weaponType) {
+        case 'rifle':
+            title = 'Fuzil de Assalto (Assault Rifle)';
+            cmds = [
+                `give ${nick} jeg:assault_rifle 1`,
+                `give ${nick} jeg:rifle_magazine 3`,
+                `give ${nick} jeg:magazine_loader 1`,
+                `give ${nick} jeg:rifle_ammo 128`,
+                `give ${nick} jeg:reflex_sight 1`
+            ];
+            break;
+        case 'sniper_rifle':
+            title = 'Sniper Bolt-Action (Precisão)';
+            cmds = [
+                `give ${nick} jeg:bolt_action_rifle 1`,
+                `give ${nick} jeg:silencer 1`,
+                `give ${nick} jeg:rifle_ammo 64`,
+                `give ${nick} spyglass 1`
+            ];
+            break;
+        case 'shotgun':
+            title = 'Escopeta Tática (Pump Shotgun)';
+            cmds = [
+                `give ${nick} jeg:pump_shotgun 1`,
+                `give ${nick} jeg:shotgun_shell 64`,
+                `give ${nick} jeg:bulletproof_vest_vi 1`
+            ];
+            break;
+        case 'smg':
+            title = 'Submetralhadora Tática (Custom SMG)';
+            cmds = [
+                `give ${nick} jeg:custom_smg 1`,
+                `give ${nick} jeg:smg_magazine 4`,
+                `give ${nick} jeg:magazine_loader 1`,
+                `give ${nick} jeg:pistol_ammo 128`,
+                `give ${nick} jeg:silencer 1`
+            ];
+            break;
+        case 'minigun':
+            title = 'Minigun Pesada (Heavy Gunner)';
+            cmds = [
+                `give ${nick} jeg:minigun 1`,
+                `give ${nick} jeg:drum_mag 2`,
+                `give ${nick} jeg:rifle_ammo 256`
+            ];
+            break;
+        case 'rpg':
+            title = 'Lança-Foguetes & Explosivos (RPG)';
+            cmds = [
+                `give ${nick} jeg:rocket_launcher 1`,
+                `give ${nick} jeg:rocket 16`,
+                `give ${nick} jeg:grenade 8`
+            ];
+            break;
+        case 'flamethrower':
+            title = 'Lança-Chamas & Incendiários';
+            cmds = [
+                `give ${nick} jeg:flamethrower 1`,
+                `give ${nick} jeg:molotov_cocktail 6`
+            ];
+            break;
+        case 'armor_vest':
+            title = 'Armadura Balística Militar (Tier VI)';
+            cmds = [
+                `give ${nick} jeg:bulletproof_helmet_vi 1`,
+                `give ${nick} jeg:bulletproof_vest_vi 1`
+            ];
+            break;
+        case 'ammo_pack':
+            title = 'Caixa Geral de Munições';
+            cmds = [
+                `give ${nick} jeg:rifle_ammo 128`,
+                `give ${nick} jeg:pistol_ammo 128`,
+                `give ${nick} jeg:shotgun_shell 64`,
+                `give ${nick} jeg:rocket 8`
+            ];
+            break;
+        case 'mace_121':
+            title = 'Martelo Titânico (Mace 1.21 OP)';
+            cmds = [
+                `give ${nick} mace[custom_name='"Martelo Titânico"',enchantments={levels:{density:5,breach:4,wind_burst:3,unbreaking:3}},unbreakable={}] 1`
+            ];
+            break;
+        case 'god_sword':
+            title = 'Lâmina Netherite Lendária';
+            cmds = [
+                `give ${nick} netherite_sword[custom_name='"Lâmina do Destino"',enchantments={levels:{sharpness:5,looting:3,fire_aspect:2,sweeping_edge:3,unbreaking:3}},unbreakable={}] 1`
+            ];
+            break;
+        case 'god_bow':
+            title = 'Arco dos Deuses (Infinity)';
+            cmds = [
+                `give ${nick} bow[custom_name='"Arco dos Deuses"',enchantments={levels:{power:5,flame:1,punch:2,infinity:1,unbreaking:3}},unbreakable={}] 1`,
+                `give ${nick} arrow 1`
+            ];
+            break;
+        case 'trident':
+            title = 'Tridente de Poseidon (Channeling)';
+            cmds = [
+                `give ${nick} trident[custom_name='"Tridente de Poseidon"',enchantments={levels:{loyalty:3,channeling:1,impaling:5,unbreaking:3}},unbreakable={}] 1`
+            ];
+            break;
+        case 'full_arsenal':
+            title = 'Arsenal Militar Completo';
+            cmds = [
+                `give ${nick} jeg:assault_rifle 1`,
+                `give ${nick} jeg:bolt_action_rifle 1`,
+                `give ${nick} jeg:pump_shotgun 1`,
+                `give ${nick} jeg:rocket_launcher 1`,
+                `give ${nick} jeg:bulletproof_helmet_vi 1`,
+                `give ${nick} jeg:bulletproof_vest_vi 1`,
+                `give ${nick} jeg:rifle_magazine 3`,
+                `give ${nick} jeg:magazine_loader 1`,
+                `give ${nick} jeg:rifle_ammo 128`,
+                `give ${nick} jeg:shotgun_shell 64`,
+                `give ${nick} jeg:rocket 8`,
+                `give ${nick} jeg:grenade 4`,
+                `give ${nick} mace[custom_name='"Martelo Titânico"',enchantments={levels:{density:5,breach:4,wind_burst:3,unbreaking:3}},unbreakable={}] 1`
+            ];
+            break;
+        default:
+            return;
+    }
+
+    runCmd(cmds.join(' && '));
+    showToast(`⚔️ ${title} enviado para ${nick}!`);
+}
+
 function triggerInstaTnt() {
     const nick = getMyNick();
     if (telemetryData && telemetryData.players) {

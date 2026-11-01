@@ -150,6 +150,45 @@
             </div>
         </div>
 
+        <!-- ARSENAL & ARMAS DE COMBATE (JEG MOD & 1.21.1) -->
+        <div class="section">
+            <details class="accordion" open>
+                <summary>
+                    <span>⚔️ Arsenal & Armas de Combate (JEG Mod & 1.21.1)</span>
+                    <span style="font-size:0.7rem; font-weight:700; color:#38bdf8;">Armas de Fogo & Míticas</span>
+                </summary>
+                <div class="accordion-body">
+                    <div style="display:flex; gap:6px; margin-bottom:10px;">
+                        <button id="btnWeaponTargetMe" class="btn btn-sm btn-cyan active" style="flex:1;" onclick="setWeaponTarget('me')">👤 Para Mim</button>
+                        <button id="btnWeaponTargetPartner" class="btn btn-sm" style="flex:1;" onclick="setWeaponTarget('partner')">👥 Para Parceiro</button>
+                        <button id="btnWeaponTargetAll" class="btn btn-sm" style="flex:1;" onclick="setWeaponTarget('all')">🌟 Para Ambos</button>
+                    </div>
+
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-bottom:6px; font-weight:700;">ARMAS DE FOGO (JUST ENOUGH GUNS):</div>
+                    <div class="grid">
+                        <button class="btn btn-purple" onclick="giveWeaponKit('rifle')">🔫 Fuzil de Assalto (AR)</button>
+                        <button class="btn btn-red" onclick="giveWeaponKit('sniper_rifle')">🎯 Sniper Rifle (Precisão)</button>
+                        <button class="btn btn-amber" onclick="giveWeaponKit('shotgun')">🪓 Escopeta Tática (Shotgun)</button>
+                        <button class="btn btn-cyan" onclick="giveWeaponKit('smg')">⚡ Submetralhadora (SMG)</button>
+                        <button class="btn btn-red" onclick="giveWeaponKit('minigun')">💥 Minigun Pesada</button>
+                        <button class="btn btn-amber" onclick="giveWeaponKit('rpg')">🚀 Lança-Foguetes (RPG)</button>
+                        <button class="btn btn-red" onclick="giveWeaponKit('flamethrower')">🔥 Lança-Chamas</button>
+                        <button class="btn btn-green" onclick="giveWeaponKit('armor_vest')">🦺 Colete + Capacete Balístico VI</button>
+                        <button class="btn btn-cyan grid-full" onclick="giveWeaponKit('ammo_pack')">📦 Pacote Geral de Munições & Foguetes</button>
+                    </div>
+
+                    <div style="font-size:0.7rem; color:var(--text-muted); margin-top:12px; margin-bottom:6px; font-weight:700;">ARMAS CORPO-A-CORPO & MÍTICAS (1.21.1):</div>
+                    <div class="grid">
+                        <button class="btn btn-purple" onclick="giveWeaponKit('mace_121')">🔨 Martelo Titânico (Mace 1.21)</button>
+                        <button class="btn btn-purple" onclick="giveWeaponKit('god_sword')">🗡️ Espada Netherite Lendária</button>
+                        <button class="btn btn-cyan" onclick="giveWeaponKit('trident')">🔱 Tridente de Poseidon</button>
+                        <button class="btn btn-amber" onclick="giveWeaponKit('god_bow')">🏹 Arco dos Deuses (Infinity)</button>
+                        <button class="btn btn-green grid-full" style="background: linear-gradient(135deg, #059669, #10b981); font-weight:bold;" onclick="giveWeaponKit('full_arsenal')">🎖️ ARSENAL COMPLETO (Armas + Balística + Munições)</button>
+                    </div>
+                </div>
+            </details>
+        </div>
+
         <!-- DEFESA & EXPURGO SUBTERRÂNEO -->
         <div class="section">
             <div class="section-header">🛡️ Defesa da Base</div>
@@ -312,6 +351,11 @@
                 <button class="btn btn-amber" onclick="airdropItem('tnt', 16)">💣 16x TNT</button>
                 <button class="btn btn-amber" onclick="airdropItem('flint_and_steel', 1)">🔥 Isqueiro</button>
                 <button id="btnAirdropSniper" class="btn btn-red grid-full" onclick="giveSniperKit('partner')">🎯 AirDrop Kit Sniper FPS para Parceiro</button>
+                <button class="btn btn-purple" onclick="giveWeaponKit('rifle', 'partner')">🔫 AirDrop Fuzil JEG</button>
+                <button class="btn btn-red" onclick="giveWeaponKit('minigun', 'partner')">💥 AirDrop Minigun</button>
+                <button class="btn btn-amber" onclick="giveWeaponKit('mace_121', 'partner')">🔨 AirDrop Mace 1.21</button>
+                <button class="btn btn-cyan" onclick="giveWeaponKit('ammo_pack', 'partner')">📦 AirDrop Munições</button>
+                <button class="btn btn-green grid-full" onclick="giveWeaponKit('full_arsenal', 'partner')">🎖️ AirDrop Arsenal Completo para Parceiro</button>
             </div>
         </div>
 

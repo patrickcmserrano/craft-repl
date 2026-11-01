@@ -32,10 +32,12 @@
         (is (= 200 status))
         (is (re-find #"drawRadar" raw))))
 
-    (testing "GET /js/actions.js serves action handlers"
+    (testing "GET /js/actions.js serves action handlers and weapon arsenal"
       (let [{:keys [status raw headers]} (th/http-get "/js/actions.js")]
         (is (= 200 status))
-        (is (re-find #"renderItemSlotContent" raw))))
+        (is (re-find #"renderItemSlotContent" raw))
+        (is (re-find #"giveWeaponKit" raw))
+        (is (re-find #"setWeaponTarget" raw))))
 
     (testing "GET /textures/item/diamond_sword.png serves real Minecraft texture"
       (let [{:keys [status headers]} (th/http-get "/textures/item/diamond_sword.png")]
@@ -57,7 +59,11 @@
         (is (re-find #"id=\"modalCustomHouse\"" raw))
         (is (re-find #"id=\"modalItemAction\"" raw))
         (is (re-find #"id=\"modalWaypoint\"" raw))
-        (is (re-find #"id=\"modalSkin\"" raw))))))
+        (is (re-find #"id=\"modalSkin\"" raw))
+
+        ;; Weapons & Arsenal section
+        (is (re-find #"Arsenal & Armas de Combate" raw))
+        (is (re-find #"id=\"btnWeaponTargetMe\"" raw))))))
 
 (deftest test-bluemap-proxy-and-redirects
   (with-sandbox-server
