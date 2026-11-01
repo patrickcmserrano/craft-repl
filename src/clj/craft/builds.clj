@@ -412,3 +412,463 @@
               (catch Exception _ nil)))
           [true "☢️ Míssil Balístico Nuclear disparado com sucesso! Impacto iminente a 25m na sua mira."])))
     [false (str "Jogador " player-name " não encontrado para calcular vetor de lançamento.")]))
+
+;; --- PREENCHIMENTO DE LAVA & DRENAGEM ---
+
+(defn fill-lava!
+  "Fills cavities (air/water) under/around the player with lava, preserving solid terrain, with safety lock and undo."
+  ([player-name] (fill-lava! player-name 4 4))
+  ([player-name radius depth]
+   (bridge/run-command! "save-all")
+   (if-let [nbt (inv/read-player-nbt player-name)]
+     (let [pos (get nbt "Pos" [-146.0 107.0 -85.0])
+           cx (int (Math/round (double (first pos))))
+           cy (int (Math/round (double (second pos))))
+           cz (int (Math/round (double (nth pos 2))))
+           r (max 1 (min 15 (int (or radius 4))))
+           d (max 1 (min 20 (int (or depth 4))))
+           x1 (- cx r)
+           x2 (+ cx r)
+           z1 (- cz r)
+           z2 (+ cz r)
+           y-top (- cy 1)
+           y-bot (- cy d)
+           cmds
+           [;; 1. Fire resistance buffer for safety
+            (str "effect give " player-name " fire_resistance 30 1 true")
+            ;; 2. Fill air cavities with lava
+            (str "fill " x1 " " y-bot " " z1 " " x2 " " y-top " " z2 " lava replace air")
+            ;; 3. Fill water cavities with lava
+            (str "fill " x1 " " y-bot " " z1 " " x2 " " y-top " " z2 " lava replace water")
+            ;; 4. Sound & effect
+            (str "playsound minecraft:item.bucket.empty_lava master @a " cx " " cy " " cz " 1 1")]]
+       (save-undo-state! :lava {:coords [x1 y-bot z1 x2 y-top z2]
+                                :center [cx cy cz]
+                                :player player-name})
+       (doseq [c cmds] (bridge/run-command! c))
+       [true (str "🌋 Cavidade [" x1 ".." x2 ", " y-bot ".." y-top ", " z1 ".." z2 "] preenchida com lava com sucesso!")])
+     [false (str "Jogador " player-name " não encontrado para determinar coordenadas.")])))
+
+(defn undo-fill-lava!
+  "Drains lava from the last filled volume by replacing lava and flowing_lava with air."
+  []
+  (if-let [state (:lava (get-undo-state))]
+    (let [[x1 y-bot z1 x2 y-top z2] (:coords state)
+          cmds [(str "fill " x1 " " y-bot " " z1 " " x2 " " y-top " " z2 " air replace lava")
+                (str "fill " x1 " " y-bot " " z1 " " x2 " " y-top " " z2 " air replace flowing_lava")
+                (str "playsound minecraft:item.bucket.fill_lava master @a " (first (:center state [0 0 0])) " " (second (:center state [0 0 0])) " " (nth (:center state [0 0 0]) 2) " 1 1")]]
+      (doseq [c cmds] (bridge/run-command! c))
+      (save-undo-state! :lava nil)
+      [true (str "↩️ Lava drenada com sucesso na região [" x1 ".." x2 ", " y-bot ".." y-top "]!")])
+    [false "Nenhum preenchimento de lava recente encontrado para desfazer."]))
+
+;; --- CASTELO MEDIEVAL DE PEDRA ---
+
+(defn build-stone-castle!
+  "Erects an authentic 15x15 Medieval Stone Castle with 4 defensive towers, ramparts, battlements, gate, and throne."
+  [player-name]
+  (bridge/run-command! "save-all")
+  (if-let [nbt (inv/read-player-nbt player-name)]
+    (let [pos (get nbt "Pos" [-146.0 107.0 -85.0])
+          cx (int (Math/round (double (first pos))))
+          cy (int (Math/round (double (second pos))))
+          cz (int (Math/round (double (nth pos 2))))
+          rot (get nbt "Rotation" [0.0 0.0])
+          cardinal (yaw->cardinal (first rot))
+          
+          ;; Castle footprint: 15x15 (radius 7 around player)
+          hw 7
+          min-x (- cx hw)
+          max-x (+ cx hw)
+          min-z (- cz hw)
+          max-z (+ cz hw)
+          
+          cmds
+          [;; 1. Clear construction envelope (15x15x12)
+           (str "fill " min-x " " cy " " min-z " " max-x " " (+ cy 12) " " max-z " air replace")
+           
+           ;; 2. Solid foundation and courtyard floor
+           (str "fill " (- min-x 1) " " (- cy 1) " " (- min-z 1) " " (+ max-x 1) " " (- cy 1) " " (+ max-z 1) " cobblestone replace")
+           (str "fill " min-x " " (- cy 1) " " min-z " " max-x " " (- cy 1) " " max-z " stone_bricks replace")
+           (str "fill " (+ min-x 1) " " (- cy 1) " " (+ min-z 1) " " (- max-x 1) " " (- cy 1) " " (- max-z 1) " polished_andesite replace")
+           
+           ;; 3. Outer curtain walls (cy to cy + 5)
+           (str "fill " min-x " " cy " " min-z " " max-x " " (+ cy 5) " " max-z " stone_bricks replace")
+           (str "fill " (+ min-x 1) " " cy " " (+ min-z 1) " " (- max-x 1) " " (+ cy 5) " " (- max-z 1) " air replace")
+           
+           ;; 4. Rampart walkway at cy + 4 around perimeter
+           (str "fill " (+ min-x 1) " " (+ cy 4) " " (+ min-z 1) " " (- max-x 1) " " (+ cy 4) " " (- max-z 1) " stone_brick_slab[type=bottom] replace")
+           (str "fill " (+ min-x 2) " " (+ cy 4) " " (+ min-z 2) " " (- max-x 2) " " (+ cy 4) " " (- max-z 2) " air replace")
+           
+           ;; 5. Outer wall battlements (cy + 6)
+           (str "fill " min-x " " (+ cy 6) " " min-z " " max-x " " (+ cy 6) " " min-z " stone_brick_wall replace")
+           (str "fill " min-x " " (+ cy 6) " " max-z " " max-x " " (+ cy 6) " " max-z " stone_brick_wall replace")
+           (str "fill " min-x " " (+ cy 6) " " min-z " " min-x " " (+ cy 6) " " max-z " stone_brick_wall replace")
+           (str "fill " max-x " " (+ cy 6) " " min-z " " max-x " " (+ cy 6) " " max-z " stone_brick_wall replace")
+           
+           ;; 6. Four Corner Defensive Towers (4x4, cy to cy + 8)
+           ;; NW Tower
+           (str "fill " min-x " " cy " " min-z " " (+ min-x 3) " " (+ cy 8) " " (+ min-z 3) " stone_bricks replace")
+           (str "fill " (+ min-x 1) " " cy " " (+ min-z 1) " " (+ min-x 2) " " (+ cy 7) " " (+ min-z 2) " air replace")
+           (str "fill " min-x " " (+ cy 9) " " min-z " " (+ min-x 3) " " (+ cy 9) " " (+ min-z 3) " stone_brick_wall replace")
+           (str "setblock " (+ min-x 1) " " (+ cy 9) " " (+ min-z 1) " air replace")
+           (str "setblock " (+ min-x 2) " " (+ cy 9) " " (+ min-z 1) " air replace")
+           (str "setblock " (+ min-x 1) " " (+ cy 9) " " (+ min-z 2) " air replace")
+           (str "setblock " (+ min-x 2) " " (+ cy 9) " " (+ min-z 2) " air replace")
+           (str "setblock " min-x " " (+ cy 10) " " min-z " lantern[hanging=false] replace")
+           (str "setblock " (+ min-x 3) " " (+ cy 10) " " min-z " lantern[hanging=false] replace")
+           (str "setblock " min-x " " (+ cy 10) " " (+ min-z 3) " lantern[hanging=false] replace")
+           (str "setblock " (+ min-x 3) " " (+ cy 10) " " (+ min-z 3) " lantern[hanging=false] replace")
+           
+           ;; NE Tower
+           (str "fill " (- max-x 3) " " cy " " min-z " " max-x " " (+ cy 8) " " (+ min-z 3) " stone_bricks replace")
+           (str "fill " (- max-x 2) " " cy " " (+ min-z 1) " " (- max-x 1) " " (+ cy 7) " " (+ min-z 2) " air replace")
+           (str "fill " (- max-x 3) " " (+ cy 9) " " min-z " " max-x " " (+ cy 9) " " (+ min-z 3) " stone_brick_wall replace")
+           (str "setblock " (- max-x 2) " " (+ cy 9) " " (+ min-z 1) " air replace")
+           (str "setblock " (- max-x 1) " " (+ cy 9) " " (+ min-z 1) " air replace")
+           (str "setblock " (- max-x 2) " " (+ cy 9) " " (+ min-z 2) " air replace")
+           (str "setblock " (- max-x 1) " " (+ cy 9) " " (+ min-z 2) " air replace")
+           (str "setblock " (- max-x 3) " " (+ cy 10) " " min-z " lantern[hanging=false] replace")
+           (str "setblock " max-x " " (+ cy 10) " " min-z " lantern[hanging=false] replace")
+           (str "setblock " (- max-x 3) " " (+ cy 10) " " (+ min-z 3) " lantern[hanging=false] replace")
+           (str "setblock " max-x " " (+ cy 10) " " (+ min-z 3) " lantern[hanging=false] replace")
+           
+           ;; SW Tower
+           (str "fill " min-x " " cy " " (- max-z 3) " " (+ min-x 3) " " (+ cy 8) " " max-z " stone_bricks replace")
+           (str "fill " (+ min-x 1) " " cy " " (- max-z 2) " " (+ min-x 2) " " (+ cy 7) " " (- max-z 1) " air replace")
+           (str "fill " min-x " " (+ cy 9) " " (- max-z 3) " " (+ min-x 3) " " (+ cy 9) " " max-z " stone_brick_wall replace")
+           (str "setblock " (+ min-x 1) " " (+ cy 9) " " (- max-z 2) " air replace")
+           (str "setblock " (+ min-x 2) " " (+ cy 9) " " (- max-z 2) " air replace")
+           (str "setblock " (+ min-x 1) " " (+ cy 9) " " (- max-z 1) " air replace")
+           (str "setblock " (+ min-x 2) " " (+ cy 9) " " (- max-z 1) " air replace")
+           (str "setblock " min-x " " (+ cy 10) " " (- max-z 3) " lantern[hanging=false] replace")
+           (str "setblock " (+ min-x 3) " " (+ cy 10) " " (- max-z 3) " lantern[hanging=false] replace")
+           (str "setblock " min-x " " (+ cy 10) " " max-z " lantern[hanging=false] replace")
+           (str "setblock " (+ min-x 3) " " (+ cy 10) " " max-z " lantern[hanging=false] replace")
+
+           ;; SE Tower
+           (str "fill " (- max-x 3) " " cy " " (- max-z 3) " " max-x " " (+ cy 8) " " max-z " stone_bricks replace")
+           (str "fill " (- max-x 2) " " cy " " (- max-z 2) " " (- max-x 1) " " (+ cy 7) " " (- max-z 1) " air replace")
+           (str "fill " (- max-x 3) " " (+ cy 9) " " (- max-z 3) " " max-x " " (+ cy 9) " " max-z " stone_brick_wall replace")
+           (str "setblock " (- max-x 2) " " (+ cy 9) " " (- max-z 2) " air replace")
+           (str "setblock " (- max-x 1) " " (+ cy 9) " " (- max-z 2) " air replace")
+           (str "setblock " (- max-x 2) " " (+ cy 9) " " (- max-z 1) " air replace")
+           (str "setblock " (- max-x 1) " " (+ cy 9) " " (- max-z 1) " air replace")
+           (str "setblock " (- max-x 3) " " (+ cy 10) " " (- max-z 3) " lantern[hanging=false] replace")
+           (str "setblock " max-x " " (+ cy 10) " " (- max-z 3) " lantern[hanging=false] replace")
+           (str "setblock " (- max-x 3) " " (+ cy 10) " " (+ max-z 3) " lantern[hanging=false] replace")
+           (str "setblock " max-x " " (+ cy 10) " " (+ max-z 3) " lantern[hanging=false] replace")
+
+           ;; 7. Tower Access Ladder (in NW Tower)
+           (str "fill " (+ min-x 2) " " cy " " (+ min-z 2) " " (+ min-x 2) " " (+ cy 8) " " (+ min-z 2) " ladder[facing=west] replace")
+           (str "fill " (+ min-x 3) " " cy " " (+ min-z 1) " " (+ min-x 3) " " (+ cy 2) " " (+ min-z 1) " air replace")
+
+           ;; 8. Main Gate Opening & Portcullis
+           (case cardinal
+             "north" (str "fill " (- cx 1) " " cy " " min-z " " (+ cx 1) " " (+ cy 3) " " min-z " air replace")
+             "east"  (str "fill " max-x " " cy " " (- cz 1) " " max-x " " (+ cy 3) " " (+ cz 1) " air replace")
+             "west"  (str "fill " min-x " " cy " " (- cz 1) " " min-x " " (+ cy 3) " " (+ cz 1) " air replace")
+             (str "fill " (- cx 1) " " cy " " max-z " " (+ cx 1) " " (+ cy 3) " " max-z " air replace"))
+           
+           (case cardinal
+             "north" (str "fill " (- cx 1) " " (+ cy 3) " " min-z " " (+ cx 1) " " (+ cy 3) " " min-z " iron_bars replace")
+             "east"  (str "fill " max-x " " (+ cy 3) " " (- cz 1) " " max-x " " (+ cy 3) " " (+ cz 1) " iron_bars replace")
+             "west"  (str "fill " min-x " " (+ cy 3) " " (- cz 1) " " min-x " " (+ cy 3) " " (+ cz 1) " iron_bars replace")
+             (str "fill " (- cx 1) " " (+ cy 3) " " max-z " " (+ cx 1) " " (+ cy 3) " " max-z " iron_bars replace"))
+
+           ;; 9. Central Courtyard: Medieval Throne, Red Carpet & Arsenal
+           (str "setblock " cx " " cy " " (- cz 3) " chiseled_stone_bricks replace")
+           (str "setblock " cx " " (+ cy 1) " " (- cz 3) " stone_brick_stairs[facing=south,half=bottom] replace")
+           (str "setblock " cx " " (+ cy 2) " " (- cz 3) " red_banner replace")
+           (str "setblock " (- cx 1) " " cy " " (- cz 3) " stone_brick_stairs[facing=east,half=bottom] replace")
+           (str "setblock " (+ cx 1) " " cy " " (- cz 3) " stone_brick_stairs[facing=west,half=bottom] replace")
+           (str "fill " cx " " cy " " (- cz 2) " " cx " " cy " " (+ cz 4) " red_carpet replace")
+           (str "setblock " (- cx 3) " " cy " " (- cz 1) " anvil replace")
+           (str "setblock " (- cx 3) " " cy " " cz " crafting_table replace")
+           (str "setblock " (- cx 3) " " cy " " (+ cz 1) " blast_furnace replace")
+           (str "setblock " (+ cx 3) " " cy " " (- cz 1) " stonecutter replace")
+           (str "setblock " (+ cx 3) " " cy " " cz " chest replace")
+           (str "setblock " (+ cx 3) " " cy " " (+ cz 1) " barrel replace")
+           
+           ;; Courtyard Torches & Lanterns
+           (str "setblock " (- cx 2) " " (+ cy 2) " " (- cz 2) " lantern[hanging=false] replace")
+           (str "setblock " (+ cx 2) " " (+ cy 2) " " (- cz 2) " lantern[hanging=false] replace")
+           (str "setblock " (- cx 2) " " (+ cy 2) " " (+ cz 2) " lantern[hanging=false] replace")
+           (str "setblock " (+ cx 2) " " (+ cy 2) " " (+ cz 2) " lantern[hanging=false] replace")
+
+           ;; 10. Safe player placement & sound
+           (str "tp " player-name " " cx " " cy " " cz)
+           (str "playsound minecraft:ui.toast.challenge_complete master @a " cx " " cy " " cz " 1 1")]]
+      
+      (save-undo-state! :stone-castle {:coords [cx cy cz]
+                                       :bounds [min-x max-x min-z max-z]
+                                       :cy cy
+                                       :player player-name})
+      (doseq [c cmds] (bridge/run-command! c))
+      [true (str "🏰 Castelo Medieval de Pedra (15x15) erguido com sucesso em [" cx ", " cy ", " cz "]!")])
+    [false (str "Jogador " player-name " não encontrado para determinar coordenadas.")]))
+
+(defn undo-stone-castle!
+  "Demolishes the last stone castle and restores natural ground with grass."
+  []
+  (if-let [state (:stone-castle (get-undo-state))]
+    (let [[cx cy cz] (:coords state)
+          [min-x max-x min-z max-z] (:bounds state)
+          cmds [(str "fill " (- min-x 1) " " (- cy 1) " " (- min-z 1) " " (+ max-x 1) " " (+ cy 12) " " (+ max-z 1) " air replace")
+                (str "fill " (- min-x 1) " " (- cy 1) " " (- min-z 1) " " (+ max-x 1) " " (- cy 1) " " (+ max-z 1) " grass_block replace")]]
+      (doseq [c cmds] (bridge/run-command! c))
+      (save-undo-state! :stone-castle nil)
+      [true (str "↩️ Castelo Medieval de pedra em [" cx ", " cy ", " cz "] desfeito e terreno restaurado com grama!")])
+    [false "Nenhum castelo recente encontrado no histórico para desfazer."]))
+
+;; --- CASTELO TITÂNICO DO VAZIO (A CIDADELA QWEN) ---
+
+(defn build-titanic-castle!
+  "Erects the Titanic Void Citadel (41x41): a colossal double-walled keep built over a moat, with four
+   colossal corner towers sporting conical roofs and beacon pinnacles, a massive central donjon topped by
+   a spire, battlemented ramparts, a drawbridge gatehouse, a stained-glass chapel and inner gardens."
+  [player-name]
+  (bridge/run-command! "save-all")
+  (if-let [nbt (inv/read-player-nbt player-name)]
+    (let [pos (get nbt "Pos" [-146.0 107.0 -85.0])
+          cx (int (Math/round (double (first pos))))
+          cy (int (Math/round (double (second pos))))
+          cz (int (Math/round (double (nth pos 2))))
+          rot (get nbt "Rotation" [0.0 0.0])
+          cardinal (yaw->cardinal (first rot))
+
+          ;; Footprint: 41x41 (radius 20). Outer curtain at ±20, inner curtain at ±16.
+          B 20
+          I 16
+          wx1 (- cx B) wx2 (+ cx B)
+          wz1 (- cz B) wz2 (+ cz B)
+          ix1 (- cx I) ix2 (+ cx I)
+          iz1 (- cz I) iz2 (+ cz I)
+
+          ;; Ground/clearance levels
+          clear-top (+ cy 40)
+          base (- cy 1)
+
+          tower-top (+ cy 18)
+
+          cmds
+          [;; ── 1. GROUND PREP: clear the envelope and lay the surrounding courtyard ──
+           (str "fill " (- wx1 6) " " cy " " (- wz1 6) " " (+ wx2 6) " " clear-top " " (+ wz2 6) " air replace")
+           (str "fill " (- wx1 8) " " base " " (- wz1 8) " " (+ wx2 8) " " base " " (+ wz2 8) " grass_block replace")
+           (str "fill " (- wx1 4) " " base " " (- wz1 4) " " (+ wx2 4) " " base " " (+ wz2 4) " polished_andesite replace")
+
+           ;; ── 2. MOAT: dig a 3-wide trench ringing the walls and flood it ──
+           (str "fill " (- wx1 3) " " (- cy 3) " " (- wz1 3) " " (+ wx2 3) " " base " " (+ wz2 3) " water replace")
+           (str "fill " (- wx1 2) " " (- cy 3) " " (- wz1 2) " " (+ wx2 2) " " base " " (+ wz2 2) " air replace")
+
+           ;; ── 3. STONE BASE PLINTH under the whole citadel ──
+           (str "fill " wx1 " " base " " wz1 " " wx2 " " base " " wz2 " stone_bricks replace")
+           (str "fill " (- wx1 1) " " (- cy 2) " " (- wz1 1) " " (+ wx2 1) " " (- cy 2) " " (+ wz2 1) " cobblestone replace")
+
+           ;; ── 4. OUTER CURTAIN WALL (5 high) with inner hollow ──
+           (str "fill " wx1 " " cy " " wz1 " " wx2 " " (+ cy 5) " " wz2 " stone_bricks replace")
+           (str "fill " (+ wx1 1) " " cy " " (+ wz1 1) " " (- wx2 1) " " (+ cy 5) " " (- wz2 1) " air replace")
+
+           ;; ── 5. INNER CURTAIN WALL (7 high), 4m behind the outer ──
+           (str "fill " ix1 " " cy " " iz1 " " ix2 " " (+ cy 7) " " iz2 " deepslate_bricks replace")
+           (str "fill " (+ ix1 1) " " cy " " (+ iz1 1) " " (- ix2 1) " " (+ cy 7) " " (- iz2 1) " air replace")
+
+           ;; ── 6. CRENELLATIONS on both curtains ──
+           (str "fill " wx1 " " (+ cy 6) " " wz1 " " wx2 " " (+ cy 6) " " wz1 " stone_brick_wall replace")
+           (str "fill " wx1 " " (+ cy 6) " " wz2 " " wx2 " " (+ cy 6) " " wz2 " stone_brick_wall replace")
+           (str "fill " wx1 " " (+ cy 6) " " wz1 " " wx1 " " (+ cy 6) " " wz2 " stone_brick_wall replace")
+           (str "fill " wx2 " " (+ cy 6) " " wz1 " " wx2 " " (+ cy 6) " " wz2 " stone_brick_wall replace")
+           (str "fill " ix1 " " (+ cy 8) " " iz1 " " ix2 " " (+ cy 8) " " iz1 " deepslate_tile_wall replace")
+           (str "fill " ix1 " " (+ cy 8) " " iz2 " " ix2 " " (+ cy 8) " " iz2 " deepslate_tile_wall replace")
+           (str "fill " ix1 " " (+ cy 8) " " iz1 " " ix1 " " (+ cy 8) " " iz2 " deepslate_tile_wall replace")
+           (str "fill " ix2 " " (+ cy 8) " " iz1 " " ix2 " " (+ cy 8) " " iz2 " deepslate_tile_wall replace")
+
+           ;; ── 7. RAMPART WALKWAY between the two curtains (at cy+4) ──
+           (str "fill " wx1 " " (+ cy 4) " " wz1 " " ix2 " " (+ cy 4) " " iz2 " stone_brick_slab[type=top] replace")
+           (str "fill " (+ wx1 1) " " (+ cy 4) " " (+ wz1 1) " " (- ix2 1) " " (+ cy 4) " " (- iz2 1) " air replace")
+
+           ;; ── 8. FOUR COLOSSAL CORNER TOWERS (7x7, cy → cy+18, conical roofs) ──
+           ;; NW
+           (str "fill " wx1 " " cy " " wz1 " " (+ wx1 6) " " tower-top " " (+ wz1 6) " stone_bricks replace")
+           (str "fill " (+ wx1 1) " " cy " " (+ wz1 1) " " (+ wx1 5) " " (- tower-top 3) " " (+ wz1 5) " air replace")
+           (str "fill " (+ wx1 2) " " (+ cy 2) " " (+ wz1 2) " " (+ wx1 4) " " (+ cy 8) " " (+ wz1 4) " air replace")
+           (str "fill " (+ wx1 1) " " (- tower-top 2) " " (+ wz1 1) " " (+ wx1 5) " " (- tower-top 2) " " (+ wz1 5) " stone_brick_slab[type=bottom] replace")
+           (str "fill " wx1 " " tower-top " " wz1 " " (+ wx1 6) " " (+ tower-top 2) " " (+ wz1 6) " air replace")
+           (str "fill " (+ wx1 1) " " (+ tower-top 1) " " (+ wz1 1) " " (+ wx1 5) " " (+ tower-top 1) " " (+ wz1 5) " stone_bricks replace")
+           (str "fill " (+ wx1 2) " " (+ tower-top 2) " " (+ wz1 2) " " (+ wx1 4) " " (+ tower-top 2) " " (+ wz1 4) " stone_bricks replace")
+           (str "setblock " (+ wx1 3) " " (+ tower-top 3) " " (+ wz1 3) " stone_bricks replace")
+           (str "setblock " (+ wx1 3) " " (+ tower-top 4) " " (+ wz1 3) " chiseled_stone_bricks replace")
+           (str "setblock " (+ wx1 3) " " (+ tower-top 5) " " (+ wz1 3) " beacon replace")
+           ;; SE
+           (str "fill " (- wx2 6) " " cy " " (- wz2 6) " " wx2 " " tower-top " " wz2 " stone_bricks replace")
+           (str "fill " (- wx2 5) " " cy " " (- wz2 5) " " (- wx2 1) " " (- tower-top 3) " " (- wz2 1) " air replace")
+           (str "fill " (- wx2 4) " " (+ cy 2) " " (- wz2 4) " " (- wx2 2) " " (+ cy 8) " " (- wz2 2) " air replace")
+           (str "fill " (- wx2 5) " " (- tower-top 2) " " (- wz2 5) " " (- wx2 1) " " (- tower-top 2) " " (- wz2 1) " stone_brick_slab[type=bottom] replace")
+           (str "fill " (- wx2 6) " " tower-top " " (- wz2 6) " " wx2 " " (+ tower-top 2) " " wz2 " air replace")
+           (str "fill " (- wx2 5) " " (+ tower-top 1) " " (- wz2 5) " " (- wx2 1) " " (+ tower-top 1) " " (- wz2 1) " stone_bricks replace")
+           (str "fill " (- wx2 4) " " (+ tower-top 2) " " (- wz2 4) " " (- wx2 2) " " (+ tower-top 2) " " (- wz2 2) " stone_bricks replace")
+           (str "setblock " (- wx2 3) " " (+ tower-top 3) " " (- wz2 3) " stone_bricks replace")
+           (str "setblock " (- wx2 3) " " (+ tower-top 4) " " (- wz2 3) " chiseled_stone_bricks replace")
+           (str "setblock " (- wx2 3) " " (+ tower-top 5) " " (- wz2 3) " beacon replace")
+           ;; NE
+           (str "fill " (- wx2 6) " " cy " " wz1 " " wx2 " " tower-top " " (+ wz1 6) " stone_bricks replace")
+           (str "fill " (- wx2 5) " " cy " " (+ wz1 1) " " (- wx2 1) " " (- tower-top 3) " " (+ wz1 5) " air replace")
+           (str "fill " (- wx2 4) " " (+ cy 2) " " (+ wz1 2) " " (- wx2 2) " " (+ cy 8) " " (+ wz1 4) " air replace")
+           (str "fill " (- wx2 5) " " (- tower-top 2) " " (+ wz1 1) " " (- wx2 1) " " (- tower-top 2) " " (+ wz1 5) " stone_brick_slab[type=bottom] replace")
+           (str "fill " (- wx2 6) " " tower-top " " wz1 " " wx2 " " (+ tower-top 2) " " (+ wz1 6) " air replace")
+           (str "fill " (- wx2 5) " " (+ tower-top 1) " " (+ wz1 1) " " (- wx2 1) " " (+ tower-top 1) " " (+ wz1 5) " stone_bricks replace")
+           (str "fill " (- wx2 4) " " (+ tower-top 2) " " (+ wz1 2) " " (- wx2 2) " " (+ tower-top 2) " " (+ wz1 4) " stone_bricks replace")
+           (str "setblock " (- wx2 3) " " (+ tower-top 3) " " (+ wz1 3) " stone_bricks replace")
+           (str "setblock " (- wx2 3) " " (+ tower-top 4) " " (+ wz1 3) " chiseled_stone_bricks replace")
+           (str "setblock " (- wx2 3) " " (+ tower-top 5) " " (+ wz1 3) " beacon replace")
+           ;; SW
+           (str "fill " wx1 " " cy " " (- wz2 6) " " (+ wx1 6) " " tower-top " " wz2 " stone_bricks replace")
+           (str "fill " (+ wx1 1) " " cy " " (- wz2 5) " " (+ wx1 5) " " (- tower-top 3) " " (- wz2 1) " air replace")
+           (str "fill " (+ wx1 2) " " (+ cy 2) " " (- wz2 4) " " (+ wx1 4) " " (+ cy 8) " " (- wz2 2) " air replace")
+           (str "fill " (+ wx1 1) " " (- tower-top 2) " " (- wz2 5) " " (+ wx1 5) " " (- tower-top 2) " " (- wz2 1) " stone_brick_slab[type=bottom] replace")
+           (str "fill " wx1 " " tower-top " " (- wz2 6) " " (+ wx1 6) " " (+ tower-top 2) " " wz2 " air replace")
+           (str "fill " (+ wx1 1) " " (+ tower-top 1) " " (- wz2 5) " " (+ wx1 5) " " (+ tower-top 1) " " (- wz2 1) " stone_bricks replace")
+           (str "fill " (+ wx1 2) " " (+ tower-top 2) " " (- wz2 4) " " (+ wx1 4) " " (+ tower-top 2) " " (- wz2 2) " stone_bricks replace")
+           (str "setblock " (+ wx1 3) " " (+ tower-top 3) " " (- wz2 3) " stone_bricks replace")
+           (str "setblock " (+ wx1 3) " " (+ tower-top 4) " " (- wz2 3) " chiseled_stone_bricks replace")
+           (str "setblock " (+ wx1 3) " " (+ tower-top 5) " " (- wz2 3) " beacon replace")
+
+           ;; ── 9. CENTRAL DONJON (11x11 keep, cy → cy+22) crowned by a spire ──
+           (str "fill " (- cx 5) " " cy " " (- cz 5) " " (+ cx 5) " " (+ cy 22) " " (+ cz 5) " stone_bricks replace")
+           (str "fill " (- cx 4) " " cy " " (- cz 4) " " (+ cx 4) " " (+ cy 20) " " (+ cz 4) " air replace")
+           (str "fill " (- cx 5) " " (+ cy 22) " " (- cz 5) " " (+ cx 5) " " (+ cy 22) " " (+ cz 5) " stone_brick_slab[type=top] replace")
+           ;; Crown battlements
+           (str "fill " (- cx 5) " " (+ cy 23) " " (- cz 5) " " (+ cx 5) " " (+ cy 23) " " (- cz 5) " stone_brick_wall replace")
+           (str "fill " (- cx 5) " " (+ cy 23) " " (+ cz 5) " " (+ cx 5) " " (+ cy 23) " " (+ cz 5) " stone_brick_wall replace")
+           (str "fill " (- cx 5) " " (+ cy 23) " " (- cz 5) " " (- cx 5) " " (+ cy 23) " " (+ cz 5) " stone_brick_wall replace")
+           (str "fill " (+ cx 5) " " (+ cy 23) " " (- cz 5) " " (+ cx 5) " " (+ cy 23) " " (+ cz 5) " stone_brick_wall replace")
+           ;; Spire: tapering roof + gold finial + beacon
+           (str "fill " (- cx 4) " " (+ cy 23) " " (- cz 4) " " (+ cx 4) " " (+ cy 23) " " (+ cz 4) " deepslate_tiles replace")
+           (str "fill " (- cx 3) " " (+ cy 24) " " (- cz 3) " " (+ cx 3) " " (+ cy 24) " " (+ cz 3) " deepslate_tiles replace")
+           (str "fill " (- cx 2) " " (+ cy 25) " " (- cz 2) " " (+ cx 2) " " (+ cy 25) " " (+ cz 2) " deepslate_tiles replace")
+           (str "fill " (- cx 1) " " (+ cy 26) " " (- cz 1) " " (+ cx 1) " " (+ cy 26) " " (+ cz 1) " deepslate_tiles replace")
+           (str "setblock " cx " " (+ cy 27) " " cz " deepslate_tiles replace")
+           (str "setblock " cx " " (+ cy 28) " " cz " gold_block replace")
+           (str "setblock " cx " " (+ cy 29) " " cz " beacon replace")
+           ;; Grand arched gateway into the donjon (facing player's cardinal)
+           (case cardinal
+             "north" (str "fill " (- cx 1) " " cy " " (- cz 5) " " (+ cx 1) " " (+ cy 4) " " (- cz 5) " air replace")
+             "east"  (str "fill " (+ cx 5) " " cy " " (- cz 1) " " (+ cx 5) " " (+ cy 4) " " (+ cz 1) " air replace")
+             "west"  (str "fill " (- cx 5) " " cy " " (- cz 1) " " (- cx 5) " " (+ cy 4) " " (+ cz 1) " air replace")
+             (str "fill " (- cx 1) " " cy " " (+ cz 5) " " (+ cx 1) " " (+ cy 4) " " (+ cz 5) " air replace"))
+
+           ;; ── 10. MAIN GATEHOUSE + DRAWBRIDGE (aligned to player facing) ──
+           (case cardinal
+             "north" (str "fill " (- cx 2) " " cy " " wx1 " " (+ cx 2) " " (+ cy 5) " " wx1 " air replace")
+             "east"  (str "fill " wx2 " " cy " " (- cz 2) " " wx2 " " (+ cy 5) " " (+ cz 2) " air replace")
+             "west"  (str "fill " wx1 " " cy " " (- cz 2) " " wx1 " " (+ cy 5) " " (+ cz 2) " air replace")
+             (str "fill " (- cx 2) " " cy " " wz2 " " (+ cx 2) " " (+ cy 5) " " wz2 " air replace"))
+           (case cardinal
+             "north" (str "fill " (- cx 2) " " cy " " ix1 " " (+ cx 2) " " (+ cy 5) " " ix1 " air replace")
+             "east"  (str "fill " ix2 " " cy " " (- cz 2) " " ix2 " " (+ cy 5) " " (+ cz 2) " air replace")
+             "west"  (str "fill " ix1 " " cy " " (- cz 2) " " ix1 " " (+ cy 5) " " (+ cz 2) " air replace")
+             (str "fill " (- cx 2) " " cy " " iz2 " " (+ cx 2) " " (+ cy 5) " " iz2 " air replace"))
+           ;; Portcullis bars overhead
+           (case cardinal
+             "north" (str "fill " (- cx 2) " " (+ cy 4) " " wx1 " " (+ cx 2) " " (+ cy 4) " " wx1 " iron_bars replace")
+             "east"  (str "fill " wx2 " " (+ cy 4) " " (- cz 2) " " wx2 " " (+ cy 4) " " (+ cz 2) " iron_bars replace")
+             "west"  (str "fill " wx1 " " (+ cy 4) " " (- cz 2) " " wx1 " " (+ cy 4) " " (+ cz 2) " iron_bars replace")
+             (str "fill " (- cx 2) " " (+ cy 4) " " wz2 " " (+ cx 2) " " (+ cy 4) " " wz2 " iron_bars replace"))
+           ;; Drawbridge: oak planks spanning the moat + rails
+           (case cardinal
+             "north" (str "fill " (- cx 2) " " base " " (- wz1 5) " " (+ cx 2) " " base " " (- wz1 1) " oak_planks replace")
+             "east"  (str "fill " (+ wx2 1) " " base " " (- cz 2) " " (+ wx2 5) " " base " " (+ cz 2) " oak_planks replace")
+             "west"  (str "fill " (- wx1 5) " " base " " (- cz 2) " " (- wx1 1) " " base " " (+ cz 2) " oak_planks replace")
+             (str "fill " (- cx 2) " " base " " (+ wz1 1) " " (+ cx 2) " " base " " (+ wz1 5) " oak_planks replace"))
+
+           ;; ── 11. CHAPEL (stained glass) in the west courtyard ──
+           (str "fill " (+ ix1 3) " " cy " " (- cz 3) " " (+ ix1 8) " " (+ cy 6) " " (+ cz 3) " deepslate_bricks replace")
+           (str "fill " (+ ix1 4) " " cy " " (- cz 2) " " (+ ix1 7) " " (+ cy 5) " " (+ cz 2) " air replace")
+           (str "fill " (+ ix1 3) " " (+ cy 1) " " (- cz 2) " " (+ ix1 3) " " (+ cy 4) " " (- cz 2) " cyan_stained_glass replace")
+           (str "fill " (+ ix1 3) " " (+ cy 1) " " cz " " (+ ix1 3) " " (+ cy 4) " " cz " magenta_stained_glass replace")
+           (str "fill " (+ ix1 3) " " (+ cy 1) " " (+ cz 2) " " (+ ix1 3) " " (+ cy 4) " " (+ cz 2) " cyan_stained_glass replace")
+           (str "fill " (+ ix1 3) " " (+ cy 7) " " (- cz 3) " " (+ ix1 8) " " (+ cy 7) " " (+ cz 3) " deepslate_tiles replace")
+           (str "fill " (+ ix1 4) " " (+ cy 7) " " (- cz 2) " " (+ ix1 7) " " (+ cy 7) " " (+ cz 2) " deepslate_tile_slab[type=top] replace")
+           (str "setblock " (+ ix1 6) " " (+ cy 8) " " cz " end_rod replace")
+
+           ;; ── 12. INNER GARDENS & WATER WORKS (east courtyard) ──
+           (str "fill " (- ix2 7) " " base " " (- cz 3) " " (- ix2 2) " " base " " (+ cz 3) " grass_block replace")
+           (str "fill " (- ix2 6) " " base " " (- cz 2) " " (- ix2 3) " " base " " (+ cz 2) " water replace")
+           (str "setblock " (- ix2 5) " " cy " " cz " lily_pad replace")
+           (str "setblock " (- ix2 4) " " cy " " (- cz 1) " lily_pad replace")
+           (str "setblock " (- ix2 7) " " cy " " cz " oak_log replace")
+           (str "setblock " (- ix2 7) " " (+ cy 1) " " cz " oak_leaves[persistent=true] replace")
+           (str "setblock " (- ix2 6) " " cy " " (+ cz 3) " sweet_berry_bush replace")
+           (str "setblock " (- ix2 4) " " cy " " (+ cz 3) " sweet_berry_bush replace")
+           (str "setblock " (- ix2 5) " " cy " " (- cz 3) " azure_bluet replace")
+           (str "setblock " (- ix2 4) " " cy " " (- cz 3) " oxeye_daisy replace")
+
+           ;; ── 13. THRONE HALL, BANNERS & LANTERNS inside the donjon ──
+           (str "fill " (- cx 4) " " cy " " (- cz 4) " " (+ cx 4) " " cy " " (+ cz 4) " polished_deepslate replace")
+           (str "fill " cx " " cy " " (- cz 4) " " cx " " cy " " (+ cz 4) " red_carpet replace")
+           (str "setblock " cx " " cy " " (- cz 4) " chiseled_stone_bricks replace")
+           (str "setblock " cx " " (+ cy 1) " " (- cz 4) " stone_brick_stairs[facing=south,half=bottom] replace")
+           (str "setblock " cx " " (+ cy 2) " " (- cz 4) " red_banner replace")
+           (str "setblock " (- cx 1) " " cy " " (- cz 4) " stone_brick_stairs[facing=east,half=bottom] replace")
+           (str "setblock " (+ cx 1) " " cy " " (- cz 4) " stone_brick_stairs[facing=west,half=bottom] replace")
+           (str "setblock " (- cx 4) " " (+ cy 3) " " (- cz 4) " red_banner replace")
+           (str "setblock " (+ cx 4) " " (+ cy 3) " " (- cz 4) " red_banner replace")
+           (str "setblock " (- cx 3) " " cy " " (- cz 2) " anvil replace")
+           (str "setblock " (- cx 3) " " cy " " (- cz 1) " crafting_table replace")
+           (str "setblock " (- cx 3) " " cy " " cz " blast_furnace replace")
+           (str "setblock " (- cx 3) " " cy " " (+ cz 1) " smithing_table replace")
+           (str "setblock " (+ cx 3) " " cy " " (- cz 2) " chest replace")
+           (str "setblock " (+ cx 3) " " cy " " (- cz 1) " barrel replace")
+           (str "setblock " (+ cx 3) " " cy " " cz " stonecutter replace")
+           (str "setblock " (+ cx 3) " " cy " " (+ cz 1) " ender_chest replace")
+           (str "setblock " (- cx 3) " " (+ cy 3) " " cz " lantern[hanging=true] replace")
+           (str "setblock " (+ cx 3) " " (+ cy 3) " " cz " lantern[hanging=true] replace")
+           (str "setblock " cx " " (+ cy 3) " " (- cz 1) " lantern[hanging=true] replace")
+           (str "setblock " cx " " (+ cy 3) " " (+ cz 1) " lantern[hanging=true] replace")
+
+           ;; ── 14. RAMPART LANTERNS & TORCHES around the ring ──
+           (str "setblock " (+ ix1 2) " " (+ cy 5) " " iz1 " lantern[hanging=false] replace")
+           (str "setblock " (- ix2 2) " " (+ cy 5) " " iz1 " lantern[hanging=false] replace")
+           (str "setblock " (+ ix1 2) " " (+ cy 5) " " iz2 " lantern[hanging=false] replace")
+           (str "setblock " (- ix2 2) " " (+ cy 5) " " iz2 " lantern[hanging=false] replace")
+           (str "setblock " ix1 " " (+ cy 5) " " (+ iz1 2) " lantern[hanging=false] replace")
+           (str "setblock " ix1 " " (+ cy 5) " " (- iz2 2) " lantern[hanging=false] replace")
+           (str "setblock " ix2 " " (+ cy 5) " " (+ iz1 2) " lantern[hanging=false] replace")
+           (str "setblock " ix2 " " (+ cy 5) " " (- iz2 2) " lantern[hanging=false] replace")
+
+           ;; ── 15. STONE STAIRCASE UP TO THE RAMPARTS ──
+           (str "fill " (+ cx 2) " " cy " " (+ cz 9) " " (+ cx 4) " " cy " " (+ cz 9) " polished_andesite replace")
+           (str "setblock " (+ cx 2) " " cy " " (+ cz 9) " stone_brick_stairs[facing=north,half=bottom] replace")
+           (str "setblock " (+ cx 3) " " (+ cy 1) " " (+ cz 9) " stone_brick_stairs[facing=north,half=bottom] replace")
+           (str "setblock " (+ cx 4) " " (+ cy 2) " " (+ cz 9) " stone_brick_stairs[facing=north,half=bottom] replace")
+           (str "setblock " (+ cx 4) " " (+ cy 3) " " (+ cz 9) " stone_brick_stairs[facing=north,half=bottom] replace")
+           (str "fill " (+ cx 2) " " (+ cy 4) " " (+ cz 9) " " (+ cx 4) " " (+ cy 4) " " (+ cz 9) " stone_brick_slab[type=bottom] replace")
+
+           ;; ── 16. SOUND, SAFE PLACEMENT ON THE KEEP CROWN ──
+           (str "tp " player-name " " cx " " (+ cy 23) " " cz)
+           (str "playsound minecraft:ui.toast.challenge_complete master @a " cx " " cy " " cz " 1 1")
+           (str "playsound minecraft:block.beacon.activate master @a " cx " " (+ cy 29) " " cz " 1 1")]]
+
+      (save-undo-state! :titanic-castle {:coords [cx cy cz]
+                                         :bounds [wx1 wx2 wz1 wz2]
+                                         :top (+ cy 30)
+                                         :player player-name})
+      (doseq [c cmds] (bridge/run-command! c))
+      [true (str "🌌 Castelo Titânico do Vazio (41x41) erguido em [" cx ", " cy ", " cz "] — muralha dupla, fosso, 4 torres colossais, torreão com pináculo e farol!")])
+    [false (str "Jogador " player-name " não encontrado para determinar coordenadas.")]))
+
+(defn undo-titanic-castle!
+  "Demolishes the Titanic Void Citadel, drains its moat and restores natural grass terrain."
+  []
+  (if-let [state (:titanic-castle (get-undo-state))]
+    (let [[cx cy cz] (:coords state)
+          [wx1 wx2 wz1 wz2] (:bounds state)
+          top (get state :top (+ cy 30))
+          cmds [(str "fill " (- wx1 8) " " (- cy 4) " " (- wz1 8) " " (+ wx2 8) " " top " " (+ wz2 8) " air replace")
+                (str "fill " (- wx1 8) " " (- cy 3) " " (- wz1 8) " " (+ wx2 8) " " (- cy 3) " " (+ wz2 8) " air replace")
+                (str "fill " (- wx1 8) " " (- cy 2) " " (- wz1 8) " " (+ wx2 8) " " (- cy 2) " " (+ wz2 8) " air replace")
+                (str "fill " (- wx1 1) " " (- cy 1) " " (- wz1 1) " " (+ wx2 1) " " (- cy 1) " " (+ wz2 1) " grass_block replace")]]
+      (doseq [c cmds] (bridge/run-command! c))
+      (save-undo-state! :titanic-castle nil)
+      [true (str "↩️ Castelo Titânico do Vazio em [" cx ", " cy ", " cz "] desfeito, fosso drenado e terreno restaurado com grama!")])
+    [false "Nenhum Castelo Titânico recente encontrado no histórico para desfazer."]))

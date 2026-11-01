@@ -100,10 +100,13 @@ async function loadInventory() {
         }
 
         const titleEl = document.getElementById('invPlayerTitle');
-        const pObj = (telemetryData && telemetryData.players) ? telemetryData.players.find(p => p.name.toLowerCase() === data.player.toLowerCase()) : null;
+        const targetPlayer = (data.player || currentPlayer || 'pace').toLowerCase();
+        const pObj = (typeof telemetryData !== 'undefined' && telemetryData && telemetryData.players) 
+            ? telemetryData.players.find(p => (p.name || '').toLowerCase() === targetPlayer) 
+            : null;
         const isOnline = Boolean(pObj && pObj.online);
         const badgeHtml = `<span class="player-status-badge ${isOnline ? 'online' : 'offline'}" style="margin-left:6px;">${isOnline ? 'ONLINE' : 'OFFLINE'}</span>`;
-        if (titleEl) titleEl.innerHTML = `Inventário de ${data.player.toUpperCase()} ${badgeHtml}`;
+        if (titleEl) titleEl.innerHTML = `Inventário de ${targetPlayer.toUpperCase()} ${badgeHtml}`;
         const statusEl = document.getElementById('invPlayerStatus');
         if (statusEl) statusEl.innerHTML = `❤️ ${data.health} | 🍗 ${data.food}/20 | ⭐ Lv.${data.xp} | Total: ${data.total_items} itens`;
 
@@ -263,8 +266,14 @@ async function depositLootAction() {
 }
 
 /* --- SHORTCUT ACTIONS --- */
-function teleportToHome() { runCmd(`tp ${getMyNick()} -146 107 -85`); }
-function teleportAllHome() { runCmd(`tp @a -146 107 -85`); }
+function teleportToHome() {
+    if (!confirm("Tem certeza que deseja teleportar para a Base?")) return;
+    runCmd(`tp ${getMyNick()} -146 107 -85`);
+}
+function teleportAllHome() {
+    if (!confirm("Tem certeza que deseja teleportar TODOS para a Base?")) return;
+    runCmd(`tp @a -146 107 -85`);
+}
 function pullPartner() { runCmd(`tp ${getPartnerNick()} ${getMyNick()}`); }
 function gotoPartner() { runCmd(`tp ${getMyNick()} ${getPartnerNick()}`); }
 function rescueGolem() { runCmd(`tp @e[type=iron_golem,limit=1] ${getMyNick()}`); }
@@ -598,6 +607,438 @@ async function undoEndermanTotemAction() {
     } catch (err) {
         showToast('Falha na requisição de desfazer', true);
     }
+}
+
+/* --- PREENCHIMENTO DE LAVA & DRENAGEM --- */
+async function fillLavaAction() {
+    const nick = getMyNick();
+    if (!confirm(`🌋 Deseja encher o fosso/cavidade com LAVA ao redor de ${nick}?\n(Raio: 4 blocos | Profundidade: 4 blocos abaixo dos seus pés. Terreno e construções sólidas são preservados!)`)) return;
+    showToast(`🌋 Preenchendo área com lava em ${nick}...`);
+    try {
+        const res = await fetch(`/api/build/lava?player=${nick}&radius=4&depth=4`, { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+            showToast(data.message || 'Cavidade preenchida com lava!');
+            const undoBtns = document.querySelectorAll('.btn-undo-lava');
+            undoBtns.forEach(b => b.style.display = 'block');
+            setTimeout(fetchTelemetry, 600);
+        } else {
+            showToast(data.error || data.message || 'Erro ao preencher com lava', true);
+        }
+    } catch (err) {
+        showToast('Falha na requisição de lava', true);
+    }
+}
+
+async function undoLavaAction() {
+    if (!confirm("↩️ Deseja realmente DRENAR e remover a última lava colocada?")) return;
+    showToast("↩️ Drenando lava...");
+    try {
+        const res = await fetch('/api/build/undo-lava', { method: 'POST' });
+        const data = await res.json();
+        if (data.ok) {
+            showToast(data.message || 'Lava drenada com sucesso!');
+            const undoBtns = document.querySelectorAll('.btn-undo-lava');
+            undoBtns.forEach(b => b.style.display = 'none');
+            setTimeout(fetchTelemetry, 600);
+        } else {
+            showToast(data.error || data.message || 'Erro ao drenar lava', true);
+        }
+    } catch (err) {
+        showToast('Falha na requisição de drenagem', true);
+    }
+}
+
+/* --- MAR DE LAVA PROFUNDO (MEGABURACO) - ZERO RESTART --- */
+function fillLavaSeaAction() {
+    const nick = getMyNick();
+    if (!confirm(`🌋 Inundar o buracão com um MAR DE LAVA ao redor de ${nick}?\n\n- Aplica 10 min de Resistência ao Fogo a todos\n- Inunda cavidades profundas até a camada Y=-30 (raio 15m)\n- Preenche até 1 bloco abaixo dos seus pés\n- Terrenos e construções sólidas são preservados!`)) return;
+    showToast(`🌋 Inundando com Mar de Lava em ${nick}...`);
+
+    const cmds = [
+        // 1. Proteção de fogo para todos os jogadores (10 minutos)
+        `effect give @a minecraft:fire_resistance 600 1 true`,
+        // 2. Fatia profunda (-30 até 0)
+        `execute at ${nick} run fill ~-15 -30 ~-15 ~15 0 ~15 lava replace air`,
+        `execute at ${nick} run fill ~-15 -30 ~-15 ~15 0 ~15 lava replace water`,
+        // 3. Fatia intermediária (1 até 30)
+        `execute at ${nick} run fill ~-15 1 ~-15 ~15 30 ~15 lava replace air`,
+        `execute at ${nick} run fill ~-15 1 ~-15 ~15 30 ~15 lava replace water`,
+        // 4. Fatia superior (31 até 1 bloco abaixo dos pés)
+        `execute at ${nick} run fill ~-15 31 ~-15 ~15 ~-1 ~15 lava replace air`,
+        `execute at ${nick} run fill ~-15 31 ~-15 ~15 ~-1 ~15 lava replace water`,
+        // 5. Efeito sonoro
+        `execute at ${nick} run playsound minecraft:item.bucket.empty_lava master @a ~ ~ ~ 2 0.8`
+    ];
+
+    cmds.forEach(c => runCmd(c));
+    const undoBtns = document.querySelectorAll('.btn-undo-lava-sea');
+    undoBtns.forEach(b => b.style.display = 'block');
+}
+
+function undoLavaSeaAction() {
+    const nick = getMyNick();
+    if (!confirm(`↩️ Deseja realmente DRENAR todo o mar de lava na região profunda ao redor de ${nick}?`)) return;
+    showToast("↩️ Drenando mar de lava...");
+
+    const cmds = [
+        `execute at ${nick} run fill ~-15 -30 ~-15 ~15 ~-1 ~15 air replace lava`,
+        `execute at ${nick} run fill ~-15 -30 ~-15 ~15 ~-1 ~15 air replace flowing_lava`,
+        `execute at ${nick} run playsound minecraft:item.bucket.fill_lava master @a ~ ~ ~ 2 1`
+    ];
+
+    cmds.forEach(c => runCmd(c));
+    const undoBtns = document.querySelectorAll('.btn-undo-lava-sea');
+    undoBtns.forEach(b => b.style.display = 'none');
+}
+
+/* --- CASTELO MEDIEVAL DE PEDRA (ZERO RESTART VIA API /api/run) --- */
+function buildCastleAction() {
+    const nick = getMyNick();
+    if (!confirm(`🏰 Erguer um Castelo de Pedra Medieval (15x15) ao seu redor (${nick})?\n(Sem necessidade de reiniciar o servidor!)`)) return;
+    showToast(`🏰 Erguendo Castelo de Pedra em ${nick}...`);
+
+    const cmds = [
+        // 1. Limpeza do envelope 15x15x12
+        `execute at ${nick} run fill ~-7 ~ ~-7 ~7 ~12 ~7 air replace`,
+        // 2. Fundação e chão do pátio
+        `execute at ${nick} run fill ~-8 ~-1 ~-8 ~8 ~-1 ~8 cobblestone replace`,
+        `execute at ${nick} run fill ~-7 ~-1 ~-7 ~7 ~-1 ~7 stone_bricks replace`,
+        `execute at ${nick} run fill ~-6 ~-1 ~-6 ~6 ~-1 ~6 polished_andesite replace`,
+        // 3. Muralhas externas e passadiço de ronda
+        `execute at ${nick} run fill ~-7 ~ ~-7 ~7 ~5 ~7 stone_bricks replace`,
+        `execute at ${nick} run fill ~-6 ~ ~-6 ~6 ~5 ~6 air replace`,
+        `execute at ${nick} run fill ~-6 ~4 ~-6 ~6 ~4 ~6 stone_brick_slab[type=bottom] replace`,
+        `execute at ${nick} run fill ~-5 ~4 ~-5 ~5 ~4 ~5 air replace`,
+        // 4. Ameias defensivas nas muralhas
+        `execute at ${nick} run fill ~-7 ~6 ~-7 ~7 ~6 ~-7 stone_brick_wall replace`,
+        `execute at ${nick} run fill ~-7 ~6 ~7 ~7 ~6 ~7 stone_brick_wall replace`,
+        `execute at ${nick} run fill ~-7 ~6 ~-7 ~-7 ~6 ~7 stone_brick_wall replace`,
+        `execute at ${nick} run fill ~7 ~6 ~-7 ~7 ~6 ~7 stone_brick_wall replace`,
+        // 5. Quatro Torres de Canto (4x4, 8m com parapeito e lanternas)
+        `execute at ${nick} run fill ~-7 ~ ~-7 ~-4 ~8 ~-4 stone_bricks replace`,
+        `execute at ${nick} run fill ~-6 ~ ~-6 ~-5 ~7 ~-5 air replace`,
+        `execute at ${nick} run fill ~-7 ~9 ~-7 ~-4 ~9 ~-4 stone_brick_wall replace`,
+        `execute at ${nick} run setblock ~-7 ~10 ~-7 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-4 ~10 ~-7 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-7 ~10 ~-4 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-4 ~10 ~-4 lantern[hanging=false] replace`,
+
+        `execute at ${nick} run fill ~4 ~ ~-7 ~7 ~8 ~-4 stone_bricks replace`,
+        `execute at ${nick} run fill ~5 ~ ~-6 ~6 ~7 ~-5 air replace`,
+        `execute at ${nick} run fill ~4 ~9 ~-7 ~7 ~9 ~-4 stone_brick_wall replace`,
+        `execute at ${nick} run setblock ~4 ~10 ~-7 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~7 ~10 ~-7 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~4 ~10 ~-4 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~7 ~10 ~-4 lantern[hanging=false] replace`,
+
+        `execute at ${nick} run fill ~-7 ~ ~4 ~-4 ~8 ~7 stone_bricks replace`,
+        `execute at ${nick} run fill ~-6 ~ ~5 ~-5 ~7 ~6 air replace`,
+        `execute at ${nick} run fill ~-7 ~9 ~4 ~-4 ~9 ~7 stone_brick_wall replace`,
+        `execute at ${nick} run setblock ~-7 ~10 ~4 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-4 ~10 ~4 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-7 ~10 ~7 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-4 ~10 ~7 lantern[hanging=false] replace`,
+
+        `execute at ${nick} run fill ~4 ~ ~4 ~7 ~8 ~7 stone_bricks replace`,
+        `execute at ${nick} run fill ~5 ~ ~5 ~6 ~7 ~6 air replace`,
+        `execute at ${nick} run fill ~4 ~9 ~4 ~7 ~9 ~7 stone_brick_wall replace`,
+        `execute at ${nick} run setblock ~4 ~10 ~4 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~7 ~10 ~4 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~4 ~10 ~7 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~7 ~10 ~7 lantern[hanging=false] replace`,
+
+        // Escada interna na torre noroeste
+        `execute at ${nick} run fill ~-5 ~ ~-5 ~-5 ~8 ~-5 ladder[facing=west] replace`,
+        `execute at ${nick} run fill ~-4 ~ ~-6 ~-4 ~2 ~-6 air replace`,
+
+        // Portão frontal com grade de ferro
+        `execute at ${nick} run fill ~-1 ~ ~7 ~1 ~3 ~7 air replace`,
+        `execute at ${nick} run fill ~-1 ~3 ~7 ~1 ~3 ~7 iron_bars replace`,
+
+        // Salão nobre: trono, tapete vermelho e oficinas de trabalho
+        `execute at ${nick} run setblock ~ ~ ~-3 chiseled_stone_bricks replace`,
+        `execute at ${nick} run setblock ~ ~1 ~-3 stone_brick_stairs[facing=south,half=bottom] replace`,
+        `execute at ${nick} run setblock ~ ~2 ~-3 red_banner replace`,
+        `execute at ${nick} run setblock ~-1 ~ ~-3 stone_brick_stairs[facing=east,half=bottom] replace`,
+        `execute at ${nick} run setblock ~1 ~ ~-3 stone_brick_stairs[facing=west,half=bottom] replace`,
+        `execute at ${nick} run fill ~ ~ ~-2 ~ ~ ~4 red_carpet replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~-1 anvil replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~ crafting_table replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~1 blast_furnace replace`,
+        `execute at ${nick} run setblock ~3 ~ ~-1 stonecutter replace`,
+        `execute at ${nick} run setblock ~3 ~ ~ chest replace`,
+        `execute at ${nick} run setblock ~3 ~ ~1 barrel replace`,
+        `execute at ${nick} run setblock ~-2 ~2 ~-2 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~2 ~2 ~-2 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-2 ~2 ~2 lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~2 ~2 ~2 lantern[hanging=false] replace`,
+
+        // Efeito sonoro de conquista
+        `execute at ${nick} run playsound minecraft:ui.toast.challenge_complete master @a ~ ~ ~ 1 1`
+    ];
+
+    cmds.forEach(c => runCmd(c));
+    const undoBtns = document.querySelectorAll('.btn-undo-castle');
+    undoBtns.forEach(b => b.style.display = 'block');
+}
+
+function undoCastleAction() {
+    const nick = getMyNick();
+    if (!confirm(`↩️ Deseja realmente remover o castelo ao redor de ${nick} e restaurar o terreno com grama?`)) return;
+    showToast("↩️ Desfazendo castelo...");
+    const cmds = [
+        `execute at ${nick} run fill ~-8 ~-1 ~-8 ~8 ~12 ~8 air replace`,
+        `execute at ${nick} run fill ~-8 ~-1 ~-8 ~8 ~-1 ~8 grass_block replace`
+    ];
+    cmds.forEach(c => runCmd(c));
+    const undoBtns = document.querySelectorAll('.btn-undo-castle');
+    undoBtns.forEach(b => b.style.display = 'none');
+}
+
+/* --- CASTELO TITÂNICO DO VAZIO (A CIDADELA QWEN) --- */
+async function buildTitanicCastleAction() {
+    const nick = getMyNick();
+    if (!confirm(`🌌 Erguer o Castelo Titânico do Vazio (41x41) nas coordenadas de ${nick}?\n\nUma cidadela colossal 100% oca por dentro: muralha DUPLA com passadiço, fosso com água e ponte levadiça, 4 torres gigantes de canto com escadas de mão e mirantes com beacons, um Torreão Central (Donjon) de 22 blocos com Salão do Trono, 2º andar e pináculo místico, além de Capela do Vazio com vitrais e Jardins Reais!\n\n⚠️ Ocupa 41x41 blocos e até 30 blocos de altura.`)) return;
+    showToast(`🌌 Erguendo o Castelo Titânico do Vazio em ${nick}...`);
+
+    const cmds = [
+        // 0. Garante limite de blocos e segurança do jogador
+        `gamerule commandModificationBlockLimit 1000000`,
+        `effect give ${nick} minecraft:resistance 30 255 true`,
+        `effect give ${nick} minecraft:fire_resistance 30 255 true`,
+
+        // 1. Limpeza do espaço aéreo (49x49x35) e nivelamento do terreno
+        `execute at ${nick} run fill ~-24 ~ ~-24 ~24 ~35 ~24 air replace`,
+        `execute at ${nick} run fill ~-26 ~-1 ~-26 ~26 ~-1 ~26 grass_block replace`,
+        `execute at ${nick} run fill ~-22 ~-1 ~-22 ~22 ~-1 ~22 polished_andesite replace`,
+
+        // 2. Fosso profundo de água em volta do perímetro
+        `execute at ${nick} run fill ~-23 ~-3 ~-23 ~23 ~-1 ~23 water replace`,
+        `execute at ${nick} run fill ~-20 ~-3 ~-20 ~20 ~-1 ~20 air replace`,
+        `execute at ${nick} run fill ~-20 ~-1 ~-20 ~20 ~-1 ~20 stone_bricks replace`,
+
+        // 3. Muralha Exterior (5 blocos de altura, 4 paredes independentes - pátio nunca é fechado)
+        `execute at ${nick} run fill ~-20 ~ ~-20 ~20 ~5 ~-20 stone_bricks replace`,
+        `execute at ${nick} run fill ~-20 ~ ~20 ~20 ~5 ~20 stone_bricks replace`,
+        `execute at ${nick} run fill ~-20 ~ ~-20 ~-20 ~5 ~20 stone_bricks replace`,
+        `execute at ${nick} run fill ~20 ~ ~-20 ~20 ~5 ~20 stone_bricks replace`,
+
+        // Ameias da muralha exterior
+        `execute at ${nick} run fill ~-20 ~6 ~-20 ~20 ~6 ~-20 stone_brick_wall replace`,
+        `execute at ${nick} run fill ~-20 ~6 ~20 ~20 ~6 ~20 stone_brick_wall replace`,
+        `execute at ${nick} run fill ~-20 ~6 ~-20 ~-20 ~6 ~20 stone_brick_wall replace`,
+        `execute at ${nick} run fill ~20 ~6 ~-20 ~20 ~6 ~20 stone_brick_wall replace`,
+
+        // 4. Muralha Interior (7 blocos de altura, deepslate bricks)
+        `execute at ${nick} run fill ~-16 ~ ~-16 ~16 ~7 ~-16 deepslate_bricks replace`,
+        `execute at ${nick} run fill ~-16 ~ ~16 ~16 ~7 ~16 deepslate_bricks replace`,
+        `execute at ${nick} run fill ~-16 ~ ~-16 ~-16 ~7 ~16 deepslate_bricks replace`,
+        `execute at ${nick} run fill ~16 ~ ~-16 ~16 ~7 ~16 deepslate_bricks replace`,
+
+        // Ameias da muralha interior
+        `execute at ${nick} run fill ~-16 ~8 ~-16 ~16 ~8 ~-16 deepslate_tile_wall replace`,
+        `execute at ${nick} run fill ~-16 ~8 ~16 ~16 ~8 ~16 deepslate_tile_wall replace`,
+        `execute at ${nick} run fill ~-16 ~8 ~-16 ~-16 ~8 ~16 deepslate_tile_wall replace`,
+        `execute at ${nick} run fill ~16 ~8 ~-16 ~16 ~8 ~16 deepslate_tile_wall replace`,
+
+        // 5. Passadiço / corredor militar entre as muralhas (a ~4)
+        `execute at ${nick} run fill ~-19 ~4 ~-20 ~19 ~4 ~-17 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run fill ~-19 ~4 ~17 ~19 ~4 ~20 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run fill ~-20 ~4 ~-19 ~-17 ~4 ~19 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run fill ~17 ~4 ~-19 ~20 ~4 ~19 stone_brick_slab[type=top] replace`,
+
+        // 6. As Quatro Torres Titânicas de Canto (7x7, 18 blocos de altura, 100% HOLLOW com escadas de mão)
+        // Torre NW (~-20 a ~-14, ~-20 a ~-14)
+        `execute at ${nick} run fill ~-20 ~ ~-20 ~-14 ~18 ~-14 stone_bricks hollow`,
+        `execute at ${nick} run fill ~-14 ~ ~-17 ~-14 ~2 ~-17 air replace`,
+        `execute at ${nick} run fill ~-19 ~15 ~-19 ~-15 ~15 ~-15 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run setblock ~-18 ~15 ~-18 air replace`,
+        `execute at ${nick} run fill ~-18 ~ ~-18 ~-18 ~15 ~-18 ladder[facing=south] replace`,
+        `execute at ${nick} run fill ~-20 ~19 ~-20 ~-14 ~19 ~-14 stone_brick_wall outline`,
+        `execute at ${nick} run setblock ~-17 ~20 ~-17 crying_obsidian replace`,
+        `execute at ${nick} run setblock ~-17 ~21 ~-17 gold_block replace`,
+        `execute at ${nick} run setblock ~-17 ~22 ~-17 beacon replace`,
+        `execute at ${nick} run setblock ~-20 ~3 ~-17 iron_bars replace`,
+        `execute at ${nick} run setblock ~-17 ~3 ~-20 iron_bars replace`,
+
+        // Torre SE (~14 a ~20, ~14 a ~20)
+        `execute at ${nick} run fill ~14 ~ ~14 ~20 ~18 ~20 stone_bricks hollow`,
+        `execute at ${nick} run fill ~14 ~ ~17 ~14 ~2 ~17 air replace`,
+        `execute at ${nick} run fill ~15 ~15 ~15 ~19 ~15 ~19 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run setblock ~18 ~15 ~18 air replace`,
+        `execute at ${nick} run fill ~18 ~ ~18 ~18 ~15 ~18 ladder[facing=north] replace`,
+        `execute at ${nick} run fill ~14 ~19 ~14 ~20 ~19 ~20 stone_brick_wall outline`,
+        `execute at ${nick} run setblock ~17 ~20 ~17 crying_obsidian replace`,
+        `execute at ${nick} run setblock ~17 ~21 ~17 gold_block replace`,
+        `execute at ${nick} run setblock ~17 ~22 ~17 beacon replace`,
+        `execute at ${nick} run setblock ~20 ~3 ~17 iron_bars replace`,
+        `execute at ${nick} run setblock ~17 ~3 ~20 iron_bars replace`,
+
+        // Torre NE (~14 a ~20, ~-20 a ~-14)
+        `execute at ${nick} run fill ~14 ~ ~-20 ~20 ~18 ~-14 stone_bricks hollow`,
+        `execute at ${nick} run fill ~14 ~ ~-17 ~14 ~2 ~-17 air replace`,
+        `execute at ${nick} run fill ~15 ~15 ~-19 ~19 ~15 ~-15 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run setblock ~18 ~15 ~-18 air replace`,
+        `execute at ${nick} run fill ~18 ~ ~-18 ~18 ~15 ~-18 ladder[facing=south] replace`,
+        `execute at ${nick} run fill ~14 ~19 ~-20 ~20 ~19 ~-14 stone_brick_wall outline`,
+        `execute at ${nick} run setblock ~17 ~20 ~-17 crying_obsidian replace`,
+        `execute at ${nick} run setblock ~17 ~21 ~-17 gold_block replace`,
+        `execute at ${nick} run setblock ~17 ~22 ~-17 beacon replace`,
+        `execute at ${nick} run setblock ~20 ~3 ~-17 iron_bars replace`,
+        `execute at ${nick} run setblock ~17 ~3 ~-20 iron_bars replace`,
+
+        // Torre SW (~-20 a ~-14, ~14 a ~20)
+        `execute at ${nick} run fill ~-20 ~ ~14 ~-14 ~18 ~20 stone_bricks hollow`,
+        `execute at ${nick} run fill ~-14 ~ ~17 ~-14 ~2 ~17 air replace`,
+        `execute at ${nick} run fill ~-19 ~15 ~15 ~-15 ~15 ~19 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run setblock ~-18 ~15 ~18 air replace`,
+        `execute at ${nick} run fill ~-18 ~ ~18 ~-18 ~15 ~18 ladder[facing=north] replace`,
+        `execute at ${nick} run fill ~-20 ~19 ~14 ~-14 ~19 ~20 stone_brick_wall outline`,
+        `execute at ${nick} run setblock ~-17 ~20 ~17 crying_obsidian replace`,
+        `execute at ${nick} run setblock ~-17 ~21 ~17 gold_block replace`,
+        `execute at ${nick} run setblock ~-17 ~22 ~17 beacon replace`,
+        `execute at ${nick} run setblock ~-20 ~3 ~17 iron_bars replace`,
+        `execute at ${nick} run setblock ~-17 ~3 ~20 iron_bars replace`,
+
+        // 7. Torreão Central (Donjon) Colossal (11x11, 22 blocos, 100% HOLLOW com múltiplos andares)
+        `execute at ${nick} run fill ~-5 ~ ~-5 ~5 ~22 ~5 stone_bricks hollow`,
+        `execute at ${nick} run fill ~-4 ~-1 ~-4 ~4 ~-1 ~4 polished_deepslate replace`,
+
+        // Portas de entrada frontal e traseira no Donjon
+        `execute at ${nick} run fill ~-1 ~ ~5 ~1 ~3 ~5 air replace`,
+        `execute at ${nick} run fill ~-1 ~ ~-5 ~1 ~3 ~-5 air replace`,
+
+        // 2º Andar do Donjon (Sala de Guerra / Quarto Imperial)
+        `execute at ${nick} run fill ~-4 ~6 ~-4 ~4 ~6 ~4 deepslate_tile_slab[type=bottom] replace`,
+        `execute at ${nick} run setblock ~-4 ~6 ~-4 air replace`,
+        `execute at ${nick} run fill ~-4 ~ ~-4 ~-4 ~6 ~-4 ladder[facing=east] replace`,
+        `execute at ${nick} run fill ~-5 ~8 ~-1 ~-5 ~9 ~1 glass_pane replace`,
+        `execute at ${nick} run fill ~5 ~8 ~-1 ~5 ~9 ~1 glass_pane replace`,
+
+        // 3º Andar / Mirante Ameado (a ~14)
+        `execute at ${nick} run fill ~-4 ~14 ~-4 ~4 ~14 ~4 stone_brick_slab[type=bottom] replace`,
+        `execute at ${nick} run setblock ~-4 ~14 ~-4 air replace`,
+        `execute at ${nick} run fill ~-4 ~7 ~-4 ~-4 ~14 ~-4 ladder[facing=east] replace`,
+
+        // Cobertura e Pináculo Piramidal Místico do Donjon (a ~22)
+        `execute at ${nick} run fill ~-5 ~22 ~-5 ~5 ~22 ~5 stone_brick_slab[type=top] replace`,
+        `execute at ${nick} run fill ~-5 ~23 ~-5 ~5 ~23 ~5 stone_brick_wall outline`,
+        `execute at ${nick} run fill ~-3 ~23 ~-3 ~3 ~23 ~3 deepslate_tiles replace`,
+        `execute at ${nick} run fill ~-2 ~24 ~-2 ~2 ~24 ~2 deepslate_tiles replace`,
+        `execute at ${nick} run fill ~-1 ~25 ~-1 ~1 ~25 ~1 deepslate_tiles replace`,
+        `execute at ${nick} run setblock ~ ~26 ~ crying_obsidian replace`,
+        `execute at ${nick} run setblock ~ ~27 ~ gold_block replace`,
+        `execute at ${nick} run setblock ~ ~28 ~ beacon replace`,
+
+        // 8. Mobília Imperial do Salão do Trono (Térreo do Donjon)
+        `execute at ${nick} run fill ~ ~ ~-4 ~ ~ ~4 purple_carpet replace`,
+        `execute at ${nick} run setblock ~ ~ ~-4 crying_obsidian replace`,
+        `execute at ${nick} run setblock ~ ~1 ~-4 deepslate_brick_stairs[facing=south,half=bottom] replace`,
+        `execute at ${nick} run setblock ~ ~2 ~-4 purple_banner replace`,
+        `execute at ${nick} run setblock ~-1 ~ ~-4 deepslate_brick_stairs[facing=east,half=bottom] replace`,
+        `execute at ${nick} run setblock ~1 ~ ~-4 deepslate_brick_stairs[facing=west,half=bottom] replace`,
+        `execute at ${nick} run setblock ~-4 ~3 ~-4 purple_banner replace`,
+        `execute at ${nick} run setblock ~4 ~3 ~-4 purple_banner replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~-2 anvil replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~-1 crafting_table replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~ blast_furnace replace`,
+        `execute at ${nick} run setblock ~-3 ~ ~1 smithing_table replace`,
+        `execute at ${nick} run setblock ~3 ~ ~-2 chest replace`,
+        `execute at ${nick} run setblock ~3 ~ ~-1 barrel replace`,
+        `execute at ${nick} run setblock ~3 ~ ~ stonecutter replace`,
+        `execute at ${nick} run setblock ~3 ~ ~1 ender_chest replace`,
+        `execute at ${nick} run setblock ~-3 ~3 ~ soul_lantern[hanging=true] replace`,
+        `execute at ${nick} run setblock ~3 ~3 ~ soul_lantern[hanging=true] replace`,
+        `execute at ${nick} run setblock ~ ~3 ~-1 soul_lantern[hanging=true] replace`,
+        `execute at ${nick} run setblock ~ ~3 ~1 soul_lantern[hanging=true] replace`,
+
+        // 9. Capela do Vazio com Vitrais Místicos no pátio oeste (100% HOLLOW)
+        `execute at ${nick} run fill ~-13 ~ ~-3 ~-8 ~6 ~3 deepslate_bricks hollow`,
+        `execute at ${nick} run fill ~-12 ~-1 ~-2 ~-9 ~-1 ~2 smooth_quartz replace`,
+        `execute at ${nick} run fill ~-8 ~ ~-1 ~-8 ~2 ~1 air replace`,
+        `execute at ${nick} run fill ~-13 ~1 ~-2 ~-13 ~4 ~-2 cyan_stained_glass replace`,
+        `execute at ${nick} run fill ~-13 ~1 ~ ~-13 ~4 ~ magenta_stained_glass replace`,
+        `execute at ${nick} run fill ~-13 ~1 ~2 ~-13 ~4 ~2 cyan_stained_glass replace`,
+        `execute at ${nick} run setblock ~-12 ~ ~ crying_obsidian replace`,
+        `execute at ${nick} run setblock ~-12 ~1 ~ amethyst_cluster[facing=up] replace`,
+        `execute at ${nick} run setblock ~-10 ~4 ~ soul_lantern[hanging=true] replace`,
+
+        // 10. Jardins e Lago no pátio leste
+        `execute at ${nick} run fill ~8 ~-1 ~-3 ~13 ~-1 ~3 grass_block replace`,
+        `execute at ${nick} run fill ~9 ~-1 ~-2 ~12 ~-1 ~2 water replace`,
+        `execute at ${nick} run setblock ~10 ~ ~ lily_pad replace`,
+        `execute at ${nick} run setblock ~11 ~ ~-1 lily_pad replace`,
+        `execute at ${nick} run setblock ~8 ~ ~ oak_log replace`,
+        `execute at ${nick} run setblock ~8 ~1 ~ oak_leaves[persistent=true] replace`,
+        `execute at ${nick} run setblock ~9 ~ ~3 sweet_berry_bush replace`,
+        `execute at ${nick} run setblock ~11 ~ ~3 sweet_berry_bush replace`,
+        `execute at ${nick} run setblock ~10 ~ ~-3 azure_bluet replace`,
+
+        // 11. Portão Principal com Grade de Ferro e Ponte Levadiça sobre o fosso
+        `execute at ${nick} run fill ~-2 ~ ~16 ~2 ~4 ~16 air replace`,
+        `execute at ${nick} run fill ~-2 ~ ~20 ~2 ~4 ~20 air replace`,
+        `execute at ${nick} run fill ~-2 ~4 ~20 ~2 ~4 ~20 iron_bars replace`,
+        `execute at ${nick} run fill ~-2 ~-1 ~21 ~2 ~-1 ~24 oak_planks replace`,
+
+        // 12. Lanternas das muralhas e escadaria de acesso
+        `execute at ${nick} run setblock ~-14 ~5 ~-16 soul_lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~14 ~5 ~-16 soul_lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~-14 ~5 ~16 soul_lantern[hanging=false] replace`,
+        `execute at ${nick} run setblock ~14 ~5 ~16 soul_lantern[hanging=false] replace`,
+        `execute at ${nick} run fill ~2 ~ ~9 ~4 ~ ~9 polished_andesite replace`,
+        `execute at ${nick} run setblock ~2 ~ ~9 stone_brick_stairs[facing=north,half=bottom] replace`,
+        `execute at ${nick} run setblock ~3 ~1 ~9 stone_brick_stairs[facing=north,half=bottom] replace`,
+        `execute at ${nick} run setblock ~4 ~2 ~9 stone_brick_stairs[facing=north,half=bottom] replace`,
+        `execute at ${nick} run setblock ~4 ~3 ~9 stone_brick_stairs[facing=north,half=bottom] replace`,
+        `execute at ${nick} run fill ~2 ~4 ~9 ~4 ~4 ~9 stone_brick_slab[type=bottom] replace`,
+
+        // 13. Teletransporte seguro para o Salão do Trono e celebração
+        `execute at ${nick} run tp ${nick} ~ ~1 ~`,
+        `execute at ${nick} run playsound minecraft:ui.toast.challenge_complete master @a ~ ~ ~ 1 1`,
+        `execute at ${nick} run playsound minecraft:block.beacon.activate master @a ~ ~28 ~ 1 1`
+    ];
+
+    for (const c of cmds) {
+        await runCmd(c);
+    }
+
+    showToast(`🌌 Castelo Titânico do Vazio (41x41) erguido com sucesso em ${nick}!`);
+    const undoBtns = document.querySelectorAll('.btn-undo-titanic-castle');
+    undoBtns.forEach(b => b.style.display = 'block');
+}
+
+async function undoTitanicCastleAction() {
+    const nick = getMyNick();
+    if (!confirm(`↩️ Deseja realmente demolir o Castelo Titânico do Vazio ao redor de ${nick}, drenar o fosso e restaurar o terreno com grama?`)) return;
+    showToast("↩️ Demolindo o Castelo Titânico do Vazio...");
+    const cmds = [
+        `gamerule commandModificationBlockLimit 1000000`,
+        `execute at ${nick} run fill ~-28 ~ ~-28 ~28 ~35 ~28 air replace`,
+        `execute at ${nick} run fill ~-28 ~-3 ~-28 ~28 ~-1 ~28 dirt replace`,
+        `execute at ${nick} run fill ~-28 ~-1 ~-28 ~28 ~-1 ~28 grass_block replace`
+    ];
+    for (const c of cmds) {
+        await runCmd(c);
+    }
+    const undoBtns = document.querySelectorAll('.btn-undo-titanic-castle');
+    undoBtns.forEach(b => b.style.display = 'none');
+}
+
+/* --- CIDADELA GÓTICA MONUMENTAL (100x100x90) --- */
+function buildGothicMegacastleAction() {
+    const nick = getMyNick();
+    if (!confirm(`🏛️ Erguer a Cidadela Gótica Monumental (100x100x90) em ${nick}?\n\n- Salão Catedralício (40x30x40) com 3 andares e escadaria em caracol\n- Salão do Trono, Banquete e Aposentos Reais\n- Pináculo Central de 75m com telhado vermelho até 90m e Farol\n- Ponte de Colunata de 50m de altura com pilares\n- Torre de Vigia independente (9x9)\n\n⚠️ Ocupa 100x100 blocos e até 90 blocos de altura.`)) return;
+    showToast(`🏛️ Erguendo Cidadela Gótica Monumental em ${nick}...`);
+    runCmd(`gothic-castle ${nick}`);
+}
+
+/* --- USS ENTERPRISE NCC-1701 --- */
+function buildEnterpriseAction() {
+    const nick = getMyNick();
+    if (!confirm(`🛸 Construir a USS Enterprise NCC-1701 flutuante em ${nick}?\n\n- Disco Principal (32m de diâmetro com Ponte de Comando)\n- Ponte com Cadeira do Capitão, Visor espacial e Bancadas\n- Casco Secundário de Engenharia com Defletor luminoso\n- 2 Nacelles de Dobra de 38 blocos com Coletores Bussard vermelhos e Plasma azul\n- Sala de Teletransporte com efeitos sonoros`)) return;
+    showToast(`🛸 Construindo USS Enterprise NCC-1701 nos céus de ${nick}...`);
+    runCmd(`enterprise ${nick}`);
 }
 
 /* --- OUTRAS ESTRUTURAS --- */

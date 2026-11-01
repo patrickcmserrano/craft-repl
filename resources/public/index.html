@@ -24,11 +24,11 @@
     <div class="profile-bar">
         <span class="profile-label">👤 Jogando como:</span>
         <div class="profile-pills">
-            <button id="profileBtnPace" class="profile-btn active-pace" onclick="setProfile('pace')">
+            <button id="profileBtnPace" class="profile-btn active-pace" onclick="setProfile('pace', true)">
                 <span>⚔️ Sou o Pace</span>
                 <span id="profileBadgePace" class="player-status-badge offline">OFFLINE</span>
             </button>
-            <button id="profileBtnLizzie" class="profile-btn" onclick="setProfile('lizzie')">
+            <button id="profileBtnLizzie" class="profile-btn" onclick="setProfile('lizzie', true)">
                 <span>🌸 Sou a Lizzie</span>
                 <span id="profileBadgeLizzie" class="player-status-badge offline">OFFLINE</span>
             </button>
@@ -168,6 +168,16 @@
                 <div class="accordion-body">
                     <div class="grid">
                         <button id="btnQuickInstaTnt" class="btn btn-red grid-full" onclick="triggerInstaTnt()">💥 Lançar Insta-TNT à Frente (11m, com Escudo)</button>
+                        <button class="btn btn-purple grid-full" style="background: linear-gradient(135deg, #1e293b, #334155); border: 1px solid #64748b; font-weight: bold;" onclick="buildCastleAction()">🏰 Castelo Medieval de Pedra Instantâneo</button>
+                        <button id="btnUndoCastleQuick" class="btn btn-amber grid-full btn-undo-castle" onclick="undoCastleAction()" style="display:none;">↩️ Desfazer Castelo de Pedra</button>
+                        <button class="btn btn-purple grid-full" style="background: linear-gradient(135deg, #312e81, #7c3aed); border: 1px solid #a78bfa; font-weight: bold;" onclick="buildTitanicCastleAction()">🌌 Castelo Titânico do Vazio Instantâneo (41x41)</button>
+                        <button id="btnUndoTitanicCastleQuick" class="btn btn-amber grid-full btn-undo-titanic-castle" onclick="undoTitanicCastleAction()" style="display:none;">↩️ Desfazer Castelo Titânico do Vazio</button>
+                        <button class="btn btn-purple grid-full" style="background: linear-gradient(135deg, #1e1b4b, #4338ca); border: 1px solid #818cf8; font-weight: bold;" onclick="buildGothicMegacastleAction()">🏛️ Cidadela Gótica Monumental (100x100x90)</button>
+                        <button class="btn btn-blue grid-full" style="background: linear-gradient(135deg, #0f172a, #0369a1); border: 1px solid #38bdf8; font-weight: bold;" onclick="buildEnterpriseAction()">🛸 USS Enterprise NCC-1701 (Nave Estelar Flutuante)</button>
+                        <button class="btn btn-red grid-full" style="background: linear-gradient(135deg, #7c2d12, #c2410c); border: 1px solid #ea580c; font-weight: bold;" onclick="fillLavaAction()">🌋 Encher Fosso / Cavidade com Lava (Raio 4m)</button>
+                        <button id="btnUndoLavaQuick" class="btn btn-amber grid-full btn-undo-lava" onclick="undoLavaAction()" style="display:none;">↩️ Desfazer Lava (Drenar Área)</button>
+                        <button class="btn btn-red grid-full" style="background: linear-gradient(135deg, #991b1b, #dc2626); border: 1px solid #f87171; font-weight: bold;" onclick="fillLavaSeaAction()">🌊 Inundar Buracão com Mar de Lava (Profundo)</button>
+                        <button id="btnUndoLavaSeaQuick" class="btn btn-amber grid-full btn-undo-lava-sea" onclick="undoLavaSeaAction()" style="display:none;">↩️ Drenar Mar de Lava (Restaurar)</button>
                         <button id="btnQuickNuke" class="btn btn-red grid-full" style="background: linear-gradient(135deg, #7f1d1d, #b91c1c); border: 1px solid #ef4444; font-weight: bold;" onclick="triggerNukeStrike()">☢️ DISPARAR ATAQUE NUCLEAR (NUKE)</button>
                     </div>
                 </div>
@@ -217,6 +227,21 @@
             </div>
         </details>
 
+        <!-- CASTELO MEDIEVAL DE PEDRA -->
+        <details class="accordion" open>
+            <summary>🏰 Fortaleza Medieval de Pedra</summary>
+            <div class="accordion-body">
+                <div class="grid">
+                    <button class="btn btn-purple grid-full" style="background: linear-gradient(135deg, #1e293b, #334155); border: 1px solid #64748b; font-weight: bold; font-size: 0.88rem;" onclick="buildCastleAction()">🏰 Erguer Castelo Medieval de Pedra (15x15)</button>
+                    <button id="btnUndoCastle" class="btn btn-amber grid-full btn-undo-castle" onclick="undoCastleAction()" style="display:none;">↩️ Desfazer Castelo (Restaurar Grama)</button>
+                    <button class="btn btn-purple grid-full" style="background: linear-gradient(135deg, #312e81, #7c3aed); border: 1px solid #a78bfa; font-weight: bold; font-size: 0.88rem;" onclick="buildTitanicCastleAction()">🌌 Erguer Castelo Titânico do Vazio (41x41)</button>
+                    <button id="btnUndoTitanicCastle" class="btn btn-amber grid-full btn-undo-titanic-castle" onclick="undoTitanicCastleAction()" style="display:none;">↩️ Desfazer Castelo Titânico do Vazio</button>
+                    <button class="btn btn-purple grid-full" style="background: linear-gradient(135deg, #1e1b4b, #4338ca); border: 1px solid #818cf8; font-weight: bold; font-size: 0.88rem;" onclick="buildGothicMegacastleAction()">🏛️ Erguer Cidadela Gótica Monumental (100x100x90)</button>
+                    <button class="btn btn-blue grid-full" style="background: linear-gradient(135deg, #0f172a, #0369a1); border: 1px solid #38bdf8; font-weight: bold; font-size: 0.88rem;" onclick="buildEnterpriseAction()">🛸 Erguer USS Enterprise NCC-1701 Flutuante</button>
+                </div>
+            </div>
+        </details>
+
         <!-- CASAS PARAMÉTRICAS -->
         <details class="accordion" open>
             <summary>🏠 Casas & Chalés Paramétricos</summary>
@@ -243,6 +268,10 @@
                     <button class="btn btn-purple grid-full" onclick="buildLaunchTower()">🪽 Torre Lançadora de Elytra (Y:160)</button>
                     <button class="btn btn-amber" onclick="buildPlateau()">🧹 Nivelar Platô (21x21)</button>
                     <button class="btn btn-amber" onclick="buildBridge()">🌉 Ponte Rápida</button>
+                    <button class="btn btn-red grid-full" style="background: linear-gradient(135deg, #c2410c, #ea580c); border: 1px solid #f97316; font-weight: bold;" onclick="fillLavaAction()">🌋 Encher Fosso / Cavidade com Lava (Raio 4m)</button>
+                    <button id="btnUndoLava" class="btn btn-amber grid-full btn-undo-lava" onclick="undoLavaAction()" style="display:none;">↩️ Desfazer Lava (Drenar Área)</button>
+                    <button class="btn btn-red grid-full" style="background: linear-gradient(135deg, #991b1b, #dc2626); border: 1px solid #f87171; font-weight: bold;" onclick="fillLavaSeaAction()">🌊 Inundar Buracão com Mar de Lava (Profundo Y=-30)</button>
+                    <button id="btnUndoLavaSea" class="btn btn-amber grid-full btn-undo-lava-sea" onclick="undoLavaSeaAction()" style="display:none;">↩️ Drenar Mar de Lava (Restaurar)</button>
                 </div>
             </div>
         </details>

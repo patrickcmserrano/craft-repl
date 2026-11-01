@@ -1,8 +1,8 @@
 /* API Client & State Management */
-let currentTab = 'gps';
-let currentPlayer = 'pace';
-let myProfile = 'pace';
-let telemetryData = null;
+var currentTab = 'gps';
+var currentPlayer = 'pace';
+var myProfile = 'pace';
+var telemetryData = null;
 
 function getMyNick() {
     return myProfile === 'lizzie' ? 'Lizzie' : 'pace';
@@ -85,7 +85,7 @@ async function fetchTelemetry() {
 }
 
 function updatePlayerOnlineUI() {
-    if (!telemetryData || !telemetryData.players) return;
+    if (typeof telemetryData === 'undefined' || !telemetryData || !telemetryData.players) return;
     const pace = telemetryData.players.find(p => p.name.toLowerCase() === 'pace');
     const lizzie = telemetryData.players.find(p => p.name.toLowerCase() === 'lizzie');
     const paceOnline = Boolean(pace && pace.online);
@@ -124,7 +124,7 @@ function updatePlayerOnlineUI() {
 
 function updateNukeDistanceBadge() {
     const badge = document.getElementById('nukeSafetyBadge');
-    if (!badge || !telemetryData || !telemetryData.players) return;
+    if (!badge || typeof telemetryData === 'undefined' || !telemetryData || !telemetryData.players) return;
     const me = telemetryData.players.find(p => p.name.toLowerCase() === myProfile);
     if (!me) return;
     const distToBase = Math.hypot(me.x - (-146), me.z - (-85));
@@ -154,7 +154,7 @@ function switchTab(tabId, el) {
     }
 }
 
-function setProfile(profile) {
+function setProfile(profile, notify = false) {
     myProfile = (profile || 'pace').toLowerCase();
     localStorage.setItem('mc_profile', myProfile);
 
@@ -172,7 +172,7 @@ function setProfile(profile) {
     if (typeof updateDynamicUI === 'function') updateDynamicUI();
     if (currentTab === 'inventory') selectPlayer(myProfile);
     if (typeof drawRadar === 'function') drawRadar();
-    showToast(`Perfil ativo: ${getMyDisplay()}`);
+    if (notify) showToast(`Perfil ativo: ${getMyDisplay()}`);
 }
 
 function initProfile() {

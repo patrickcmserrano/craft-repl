@@ -617,7 +617,7 @@ dialog.modal-sheet::backdrop {
 /* TOAST */
 #toast {
     position: fixed;
-    top: 20px;
+    top: 70px;
     left: 50%;
     transform: translateX(-50%) translateY(-100px);
     background: #1e293b;
@@ -630,6 +630,7 @@ dialog.modal-sheet::backdrop {
     box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
     transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
     z-index: 1000;
+    pointer-events: none;
 }
 
 #toast.show {

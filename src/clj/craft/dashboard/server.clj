@@ -2,6 +2,7 @@
   "Ring & http-kit HTTP server delivering the unified Clojure dashboard backend on port 8090."
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.java.shell :as sh]
             [clojure.string :as str]
             [craft.blueprint :as blueprint]
             [craft.bridge :as bridge]
@@ -247,13 +248,14 @@
            :body "404 Not Found"}))
 
       ;; 2. BlueMap 3D Proxy & Redirects
-      (= uri "/map")
+      (or (= uri "/map") (= uri "/bluemap"))
       {:status 301
        :headers {"Location" "/map/"}
        :body ""}
 
       (or (str/starts-with? uri "/map/")
-          (str/starts-with? uri "/bluemap/"))
+          (str/starts-with? uri "/bluemap/")
+          (str/starts-with? uri "/maps/"))
       (proxy/proxy-bluemap req)
 
       ;; 3. Skins
@@ -270,6 +272,14 @@
            :body (byte-array 0)}))
 
       ;; 4. APIs: Telemetry & Inventory
+      (and (= method :get) (= uri "/api/pos"))
+      (let [p (get params "player" "pace")
+            out (try (:out (sh/sh "/home/pace/.local/bin/mc" "pos" p))
+                     (catch Exception _ "{}"))
+            data (try (json/read-str out :key-fn keyword)
+                      (catch Exception _ {:ok false :error "parse_error"}))]
+        (json-resp data))
+
       (and (= method :get) (= uri "/api/telemetry"))
       (json-resp (get-telemetry))
 
@@ -353,6 +363,41 @@
             radius (Integer/parseInt (str (get-param params body :radius 25)))
             [ok? msg] (builds/build-pyramid! cx cy cz radius)]
         (json-resp {:ok ok? :message msg}))
+
+      ;; 10. Builds: Lava Fill & Drain
+      (and (= method :post) (= uri "/api/build/lava"))
+      (let [body (parse-json-body req)
+            player (get-param params body :player "pace")
+            radius (Integer/parseInt (str (get-param params body :radius 4)))
+            depth (Integer/parseInt (str (get-param params body :depth 4)))
+            [ok? msg] (builds/fill-lava! player radius depth)]
+        (json-resp (if ok? 200 500) {:ok ok? :message msg}))
+
+      (and (= method :post) (= uri "/api/build/undo-lava"))
+      (let [[ok? msg] (builds/undo-fill-lava!)]
+        (json-resp (if ok? 200 400) {:ok ok? :message msg}))
+
+      ;; 11. Builds: Stone Castle
+      (and (= method :post) (= uri "/api/build/castle"))
+      (let [body (parse-json-body req)
+            player (get-param params body :player "pace")
+            [ok? msg] (builds/build-stone-castle! player)]
+        (json-resp (if ok? 200 500) {:ok ok? :message msg}))
+
+      (and (= method :post) (= uri "/api/build/undo-castle"))
+      (let [[ok? msg] (builds/undo-stone-castle!)]
+        (json-resp (if ok? 200 400) {:ok ok? :message msg}))
+
+      ;; 11b. Builds: Titanic Void Citadel (Qwen Edition)
+      (and (= method :post) (= uri "/api/build/titanic-castle"))
+      (let [body (parse-json-body req)
+            player (get-param params body :player "pace")
+            [ok? msg] (builds/build-titanic-castle! player)]
+        (json-resp (if ok? 200 500) {:ok ok? :message msg}))
+
+      (and (= method :post) (= uri "/api/build/undo-titanic-castle"))
+      (let [[ok? msg] (builds/undo-titanic-castle!)]
+        (json-resp (if ok? 200 400) {:ok ok? :message msg}))
 
       (and (= method :post) (= uri "/api/monsters/purge-underground"))
       (let [body (parse-json-body req)

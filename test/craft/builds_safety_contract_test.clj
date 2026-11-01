@@ -104,3 +104,82 @@
       (let [{:keys [status body]} (th/http-post "/api/build/undo-enderman-totem")]
         (is (= 200 status))
         (is (true? (:ok body)))))))
+
+(deftest test-lava-fill-and-undo-contracts
+  (with-sandbox-server
+    (testing "Fill with lava executes safely and undo drains lava"
+      ;; Fill lava
+      (let [{:keys [status body]} (th/http-post "/api/build/lava?player=pace&radius=4&depth=3")]
+        (is (= 200 status))
+        (is (schemas/valid? schemas/ActionResponse body))
+        (is (true? (:ok body)))
+        (is (re-find #"lava" (:message body)))
+        (let [cmds (mapv :cmd (fix/read-recorded-commands! *sandbox*))]
+          (is (some #(re-find #"effect give pace fire_resistance" %) cmds))
+          (is (some #(re-find #"fill .* lava replace air" %) cmds))))
+
+      ;; Undo lava
+      (let [{:keys [status body]} (th/http-post "/api/build/undo-lava")]
+        (is (= 200 status))
+        (is (schemas/valid? schemas/ActionResponse body))
+        (is (true? (:ok body)))
+        (let [cmds (mapv :cmd (fix/read-recorded-commands! *sandbox*))]
+          (is (some #(re-find #"fill .* air replace lava" %) cmds)))))))
+
+(deftest test-stone-castle-and-undo-contracts
+  (with-sandbox-server
+    (testing "Medieval stone castle builds authentic 15x15 fortress and undo restores terrain"
+      ;; Build stone castle
+      (let [{:keys [status body]} (th/http-post "/api/build/castle?player=pace")]
+        (is (= 200 status))
+        (is (schemas/valid? schemas/ActionResponse body))
+        (is (true? (:ok body)))
+        (is (re-find #"Castelo Medieval de Pedra" (:message body)))
+        (let [cmds (mapv :cmd (fix/read-recorded-commands! *sandbox*))]
+          ;; Curtains & towers
+          (is (some #(re-find #"fill .* stone_bricks replace" %) cmds))
+          (is (some #(re-find #"fill .* stone_brick_wall replace" %) cmds))
+          (is (some #(re-find #"fill .* iron_bars replace" %) cmds))
+          (is (some #(re-find #"setblock .* chiseled_stone_bricks replace" %) cmds))
+          (is (some #(re-find #"tp pace" %) cmds))))
+
+      ;; Undo stone castle
+      (let [{:keys [status body]} (th/http-post "/api/build/undo-castle")]
+        (is (= 200 status))
+        (is (schemas/valid? schemas/ActionResponse body))
+        (is (true? (:ok body)))
+        (let [cmds (mapv :cmd (fix/read-recorded-commands! *sandbox*))]
+          (is (some #(re-find #"fill .* grass_block replace" %) cmds)))))))
+
+(deftest test-titanic-castle-and-undo-contracts
+  (with-sandbox-server
+    (testing "Titanic Void Citadel raises a double-walled 41x41 fortress with moat, towers and spire"
+      ;; Build titanic castle
+      (let [{:keys [status body]} (th/http-post "/api/build/titanic-castle?player=pace")]
+        (is (= 200 status))
+        (is (schemas/valid? schemas/ActionResponse body))
+        (is (true? (:ok body)))
+        (is (re-find #"Castelo Titânico do Vazio" (:message body)))
+        (let [cmds (mapv :cmd (fix/read-recorded-commands! *sandbox*))]
+          ;; Double curtain: stone_bricks (outer) + deepslate_bricks (inner)
+          (is (some #(re-find #"fill .* stone_bricks replace" %) cmds))
+          (is (some #(re-find #"fill .* deepslate_bricks replace" %) cmds))
+          ;; Moat water + drawbridge planks
+          (is (some #(re-find #"fill .* water replace" %) cmds))
+          (is (some #(re-find #"fill .* oak_planks replace" %) cmds))
+          ;; Creatures of detail: beacons, stained glass, garden flora
+          (is (some #(re-find #"beacon replace" %) cmds))
+          (is (some #(re-find #"stained_glass replace" %) cmds))
+          (is (some #(re-find #"lily_pad replace" %) cmds))
+          (is (some #(re-find #"gold_block replace" %) cmds))
+          ;; Player safely placed on the keep crown
+          (is (some #(re-find #"tp pace -146 .* -85" %) cmds))))
+
+      ;; Undo titanic castle
+      (let [{:keys [status body]} (th/http-post "/api/build/undo-titanic-castle")]
+        (is (= 200 status))
+        (is (schemas/valid? schemas/ActionResponse body))
+        (is (true? (:ok body)))
+        (let [cmds (mapv :cmd (fix/read-recorded-commands! *sandbox*))]
+          (is (some #(re-find #"fill .* air replace" %) cmds))
+          (is (some #(re-find #"fill .* grass_block replace" %) cmds)))))))

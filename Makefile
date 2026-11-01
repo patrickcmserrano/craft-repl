@@ -27,14 +27,20 @@ agents: build
 	@mkdir -p target/bin target
 	$(JAVAC) -d target/bin \
 		src/java/com/craft/patch/CommandRunnerAgent.java \
+		src/java/com/craft/patch/LivePosAgent.java \
 		src/java/com/craft/skin/ExtractSkin.java \
-		src/java/com/craft/skin/SkinRestorer.java
+		src/java/com/craft/skin/SkinRestorer.java \
+		src/java/com/craft/skin/ClientSkinCacheFixer.java
 	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.patch.CommandRunnerAgent\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_cmd.mf
 	$(JAR) cmf target/mf_cmd.mf target/live-cmd.jar -C target/bin com/craft/patch/CommandRunnerAgent.class
+	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.patch.LivePosAgent\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_pos.mf
+	$(JAR) cmf target/mf_pos.mf target/live-pos.jar -C target/bin com/craft/patch/LivePosAgent.class
 	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.ExtractSkin\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_extract.mf
 	$(JAR) cmf target/mf_extract.mf target/extract-skin.jar -C target/bin com/craft/skin/ExtractSkin.class
 	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.SkinRestorer\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_restore.mf
 	$(JAR) cmf target/mf_restore.mf target/restore-skin.jar -C target/bin com/craft/skin/SkinRestorer.class
+	@printf "Manifest-Version: 1.0\nAgent-Class: com.craft.skin.ClientSkinCacheFixer\nCan-Redefine-Classes: true\nCan-Retransform-Classes: true\n" > target/mf_client_skin.mf
+	$(JAR) cmf target/mf_client_skin.mf target/fix-client-skin.jar -C target/bin com/craft/skin/ClientSkinCacheFixer.class
 
 attach: jar
 	@PID_RESOLVED=$$( [ -n "$(PID)" ] && echo "$(PID)" || pgrep -f "KnotServer" | head -n 1 ); \

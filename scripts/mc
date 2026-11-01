@@ -10,9 +10,9 @@ if [ ! -f "$HOME_FILE" ]; then
     echo "-146 107 -85" > "$HOME_FILE"
 fi
 
-PID=$(pgrep -f "KnotServer" 2>/dev/null | head -n 1)
+PID=$(pgrep -f "fabric-server-launcher" 2>/dev/null | head -n 1)
 if [ -z "$PID" ]; then
-    PID=$(pgrep -f "fabric-server-launcher" 2>/dev/null | head -n 1)
+    PID=$(pgrep -f "KnotServer" 2>/dev/null | head -n 1)
 fi
 if [ -z "$PID" ]; then
     PID=$(pgrep -f "KnotClient" 2>/dev/null | head -n 1)
@@ -29,6 +29,7 @@ fi
 JAVA_BIN="/home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/java"
 INJECTOR_CP="/home/pace/dev/craft-repl/target/bin"
 AGENT_JAR="/home/pace/dev/craft-repl/target/live-cmd.jar"
+TELEMETRY_JAR="/home/pace/dev/craft-repl/target/live-telemetry-agent.jar"
 
 run_cmd() {
     "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "$AGENT_JAR" "$1" > /dev/null 2>&1
@@ -36,6 +37,28 @@ run_cmd() {
 }
 
 case "$1" in
+    pos|livepos)
+        TARGET="${2:-pace}"
+        rm -f /tmp/mc_live_pos.json
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "$TELEMETRY_JAR" "$TARGET" > /dev/null 2>&1
+        sleep 0.15
+        if [ -f "/tmp/mc_live_pos.json" ]; then
+            cat /tmp/mc_live_pos.json
+            echo ""
+        else
+            echo "{\"ok\":false,\"error\":\"Player '$TARGET' not found or offline\"}"
+        fi
+        ;;
+    enterprise|nave)
+        TARGET="${2:-pace}"
+        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/build_enterprise.py "$TARGET" > /dev/null 2>&1 &
+        echo "🛸 Construção da USS Enterprise NCC-1701 iniciada para $TARGET!"
+        ;;
+    gothic-castle)
+        TARGET="${2:-pace}"
+        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/build_gothic_megacastle.py "$TARGET" > /dev/null 2>&1 &
+        echo "🏛️ Construção da Cidadela Gótica (100x100x90) iniciada para $TARGET!"
+        ;;
     home)
         COORDS=$(cat "$HOME_FILE")
         TARGET="${2:-@a}"
@@ -81,6 +104,21 @@ case "$1" in
         run_cmd "effect give $TARGET night_vision infinite 1 true"
         echo "👁️ Visão noturna ativada para $TARGET!"
         ;;
+    chunks|view-distance)
+        VD="${2:-24}"
+        SD="${3:-10}"
+        echo "🔭 Ajustando chunk view distance para $VD (simulação: $SD)..."
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/set-view-distance.jar" "$VD $SD" > /dev/null 2>&1
+        echo "✅ View distance aplicado em tempo real: $VD chunks (simulação: $SD)!"
+        ;;
+    purge-death-star|death-star-purge|clean-death-star)
+        echo "🌑 Disparando expurgação e blindagem da Death Star..."
+        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/illuminate_death_star.py
+        ;;
+    purge-castle|castle-purge|clean-castle)
+        echo "🏰 Disparando expurgação e blindagem do Castelo e Pátio..."
+        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/illuminate_castle.py
+        ;;
     skin-backup)
         echo "💾 Extraindo e salvando backup da skin atual dos jogadores..."
         "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/extract-skin.jar" > /dev/null 2>&1
@@ -91,6 +129,10 @@ case "$1" in
         PLAYER="${2:-pace}"
         SKIN_NAME="${3:-pace}"
         echo "🔁 Restaurando skin offline de '$SKIN_NAME' para $PLAYER..."
+        CLIENT_PID=$(pgrep -f "KnotClient" 2>/dev/null | head -n 1)
+        if [ -n "$CLIENT_PID" ] && [ -f "/home/pace/dev/craft-repl/target/fix-client-skin.jar" ]; then
+            "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$CLIENT_PID" "/home/pace/dev/craft-repl/target/fix-client-skin.jar" > /dev/null 2>&1 || true
+        fi
         "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/restore-skin.jar" "$PLAYER $SKIN_NAME" > /dev/null 2>&1
         echo "✅ Skin '$SKIN_NAME' restaurada offline para $PLAYER sem depender de nick/internet!"
         ;;

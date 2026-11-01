@@ -10,7 +10,7 @@ function refreshBlueMap() {
 }
 
 function drawRadar() {
-    if (!telemetryData) return;
+    if (typeof telemetryData === 'undefined' || !telemetryData) return;
     const myKey = myProfile;
     const partnerKey = myProfile === 'pace' ? 'lizzie' : 'pace';
     const me = (telemetryData.players || []).find(p => p.name.toLowerCase() === myKey);

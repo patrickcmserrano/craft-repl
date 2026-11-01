@@ -64,9 +64,7 @@
                         (str/starts-with? sub "/home/pace/.local/bin/mc ") (subs sub (count "/home/pace/.local/bin/mc "))
                         (str/starts-with? sub "mc ") (subs sub 3)
                         :else sub)
-                  sub (str/trim sub)
-                  ;; Replace @s with pace
-                  sub (str/replace sub #"@s\b" "pace")]
+                  sub (str/trim sub)]
               (if dry?
                 (do
                   (log-dry-run! sub)

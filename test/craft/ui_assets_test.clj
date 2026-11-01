@@ -58,3 +58,24 @@
         (is (re-find #"id=\"modalItemAction\"" raw))
         (is (re-find #"id=\"modalWaypoint\"" raw))
         (is (re-find #"id=\"modalSkin\"" raw))))))
+
+(deftest test-bluemap-proxy-and-redirects
+  (with-sandbox-server
+    (testing "GET /map and /bluemap redirect 301 to /map/"
+      (let [r1 (th/http-get "/map")
+            r2 (th/http-get "/bluemap")]
+        (is (= 301 (:status r1)))
+        (is (= "/map/" (first (get (:headers r1) "location" []))))
+        (is (= 301 (:status r2)))
+        (is (= "/map/" (first (get (:headers r2) "location" []))))))
+
+    (testing "GET /map/ proxies BlueMap with proper Content-Type: text/html"
+      (let [{:keys [status headers raw]} (th/http-get "/map/")]
+        (is (= 200 status))
+        (is (re-find #"text/html" (first (get headers "content-type" []))))
+        (is (re-find #"BlueMap" raw))))
+
+    (testing "GET /map/assets/ proxies JS with proper JavaScript MIME type for ES modules"
+      (let [{:keys [status headers]} (th/http-get "/map/assets/index-b72fc5a8.js")]
+        (is (= 200 status))
+        (is (re-find #"javascript" (first (get headers "content-type" []))))))))
