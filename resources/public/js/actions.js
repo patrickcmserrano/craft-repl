@@ -439,6 +439,71 @@ function giveWeaponKit(weaponType, target) {
                 `give ${nick} mace[custom_name='"Martelo Titânico"',enchantments={levels:{density:5,breach:4,wind_burst:3,unbreaking:3}},unbreakable={}] 1`
             ];
             break;
+        case 'telescopic_sight':
+            title = 'Mira Telescópica (Telescopic Sight)';
+            cmds = [`give ${nick} jeg:telescopic_sight 1`];
+            break;
+        case 'holographic_sight':
+            title = 'Mira Holográfica EOTech (Holographic Sight)';
+            cmds = [`give ${nick} jeg:holographic_sight 1`];
+            break;
+        case 'reflex_sight':
+            title = 'Mira Reflex Red Dot (Reflex Sight)';
+            cmds = [`give ${nick} jeg:reflex_sight 1`];
+            break;
+        case 'monocle_sight':
+            title = 'Mira Monóculo (Monocle Sight)';
+            cmds = [`give ${nick} jeg:monocle_sight 1`];
+            break;
+        case 'laser_pointer':
+            title = 'Laser Tático ADS (Laser Pointer)';
+            cmds = [`give ${nick} jeg:laser_pointer 1`];
+            break;
+        case 'flashlight':
+            title = 'Lanterna Tática Acoplável (Flashlight)';
+            cmds = [`give ${nick} jeg:flashlight 1`];
+            break;
+        case 'silencer':
+            title = 'Silenciador Furtivo (Silencer)';
+            cmds = [`give ${nick} jeg:silencer 1`];
+            break;
+        case 'explosive_muzzle':
+            title = 'Bocal Explosivo (Explosive Muzzle)';
+            cmds = [`give ${nick} jeg:explosive_muzzle 1`];
+            break;
+        case 'tactical_stock':
+            title = 'Coronha Tática (Tactical Stock)';
+            cmds = [`give ${nick} jeg:tactical_stock 1`];
+            break;
+        case 'light_stock':
+            title = 'Coronha Leve (Light Stock)';
+            cmds = [`give ${nick} jeg:light_stock 1`];
+            break;
+        case 'drum_mag':
+            title = 'Pentes Tambor & Estendido';
+            cmds = [`give ${nick} jeg:drum_mag 2`, `give ${nick} jeg:extended_mag 2`];
+            break;
+        case 'air_strike_flare':
+            title = 'Sinalizador de Ataque Aéreo (Air-Strike Flare)';
+            cmds = [`give ${nick} jeg:air_strike_flare 4`];
+            break;
+        case 'attachment_pack':
+            title = 'Kit Completo de Miras & Attachments';
+            cmds = [
+                `give ${nick} jeg:telescopic_sight 1`,
+                `give ${nick} jeg:holographic_sight 1`,
+                `give ${nick} jeg:reflex_sight 1`,
+                `give ${nick} jeg:monocle_sight 1`,
+                `give ${nick} jeg:laser_pointer 1`,
+                `give ${nick} jeg:flashlight 1`,
+                `give ${nick} jeg:silencer 1`,
+                `give ${nick} jeg:explosive_muzzle 1`,
+                `give ${nick} jeg:tactical_stock 1`,
+                `give ${nick} jeg:light_stock 1`,
+                `give ${nick} jeg:drum_mag 2`,
+                `give ${nick} jeg:air_strike_flare 2`
+            ];
+            break;
         default:
             return;
     }

@@ -63,7 +63,9 @@
 
         ;; Weapons & Arsenal section
         (is (re-find #"Arsenal & Armas de Combate" raw))
-        (is (re-find #"id=\"btnWeaponTargetMe\"" raw))))))
+        (is (re-find #"id=\"btnWeaponTargetMe\"" raw))
+        (is (re-find #"MIRAS & ATTACHMENTS" raw))
+        (is (re-find #"telescopic_sight" raw))))))
 
 (deftest test-bluemap-proxy-and-redirects
   (with-sandbox-server
