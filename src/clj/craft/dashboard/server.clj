@@ -21,7 +21,7 @@
    {:status status
     :headers {"Content-Type" "application/json; charset=utf-8"
               "Access-Control-Allow-Origin" "*"}
-    :body (json/write-str body)}))
+    :body (json/write-str body :escape-slash false)}))
 
 (defn is-server-running? []
   (try
@@ -261,6 +261,7 @@
       ;; 2b. Alien Sky Shaderpack Download & Manifest for Liz & Auto-Sync
       (= uri "/api/shaderpack-manifest")
       (let [f (io/file (cfg/public-dir) "MakeUp-UltraFast-AlienSky.zip")]
+        (println (str "[AutoSync] Manifest requested from " (:remote-addr req)))
         (if (.exists f)
           (let [sha1 (with-open [is (io/input-stream f)]
                        (let [md (java.security.MessageDigest/getInstance "SHA-1")
@@ -281,6 +282,7 @@
           (= uri "/alien-sky.zip")
           (= uri "/shaderpack"))
       (let [f (io/file (cfg/public-dir) "MakeUp-UltraFast-AlienSky.zip")]
+        (println (str "[AutoSync] Shaderpack binary downloaded from " (:remote-addr req)))
         (if (.exists f)
           {:status 200
            :headers {"Content-Type" "application/zip"

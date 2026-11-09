@@ -88,3 +88,25 @@
       (let [{:keys [status headers]} (th/http-get "/map/assets/index-b72fc5a8.js")]
         (is (= 200 status))
         (is (re-find #"javascript" (first (get headers "content-type" []))))))))
+
+(deftest test-shaderpack-and-autosync-endpoints
+  (with-sandbox-server
+    (testing "GET /api/shaderpack-manifest returns JSON with valid SHA-1 and clean unescaped path"
+      (let [{:keys [status headers body raw]} (th/http-get "/api/shaderpack-manifest")]
+        (is (= 200 status))
+        (is (re-find #"application/json" (first (get headers "content-type" []))))
+        (is (= "MakeUp-UltraFast-AlienSky.zip" (:name body)))
+        (is (string? (:sha1 body)))
+        (is (= 40 (count (:sha1 body))))
+        (is (= "/shaderpack" (:path body)))
+        (is (not (re-find #"\\/" raw)))))
+
+    (testing "GET /shaderpack streams binary zip file"
+      (let [{:keys [status headers]} (th/http-get "/shaderpack")]
+        (is (= 200 status))
+        (is (re-find #"application/zip" (first (get headers "content-type" []))))))
+
+    (testing "GET /liz and /pack stream auto-sync installer package"
+      (let [{:keys [status headers]} (th/http-get "/liz")]
+        (is (= 200 status))
+        (is (re-find #"application/zip" (first (get headers "content-type" []))))))))
