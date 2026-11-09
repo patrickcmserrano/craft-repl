@@ -258,6 +258,55 @@
           (str/starts-with? uri "/maps/"))
       (proxy/proxy-bluemap req)
 
+      ;; 2b. Alien Sky Shaderpack Download & Manifest for Liz & Auto-Sync
+      (= uri "/api/shaderpack-manifest")
+      (let [f (io/file (cfg/public-dir) "MakeUp-UltraFast-AlienSky.zip")]
+        (if (.exists f)
+          (let [sha1 (with-open [is (io/input-stream f)]
+                       (let [md (java.security.MessageDigest/getInstance "SHA-1")
+                             buf (byte-array 8192)]
+                         (loop []
+                           (let [n (.read is buf)]
+                             (when (pos? n)
+                               (.update md buf 0 n)
+                               (recur))))
+                         (format "%040x" (java.math.BigInteger. 1 (.digest md)))))]
+            (json-resp {:name "MakeUp-UltraFast-AlienSky.zip"
+                        :sha1 sha1
+                        :size (.length f)
+                        :path "/shaderpack"}))
+          (json-resp 404 {:error "Not found"})))
+
+      (or (= uri "/MakeUp-UltraFast-AlienSky.zip")
+          (= uri "/alien-sky.zip")
+          (= uri "/shaderpack"))
+      (let [f (io/file (cfg/public-dir) "MakeUp-UltraFast-AlienSky.zip")]
+        (if (.exists f)
+          {:status 200
+           :headers {"Content-Type" "application/zip"
+                     "Content-Disposition" "attachment; filename=\"MakeUp-UltraFast-AlienSky.zip\""
+                     "Content-Length" (str (.length f))}
+           :body (io/input-stream f)}
+          {:status 404
+           :headers {"Content-Type" "text/plain"}
+           :body "404 Shaderpack Not Found"}))
+
+      ;; 2c. Complete Auto-Sync Installer Package (Mod + Shaderpack + Scripts)
+      (or (= uri "/AlienSky-AutoSync-Pack.zip")
+          (= uri "/pack")
+          (= uri "/liz")
+          (= uri "/lizzie"))
+      (let [f (io/file (cfg/public-dir) "AlienSky-AutoSync-Pack.zip")]
+        (if (.exists f)
+          {:status 200
+           :headers {"Content-Type" "application/zip"
+                     "Content-Disposition" "attachment; filename=\"AlienSky-AutoSync-Pack.zip\""
+                     "Content-Length" (str (.length f))}
+           :body (io/input-stream f)}
+          {:status 404
+           :headers {"Content-Type" "text/plain"}
+           :body "404 Pack Not Found"}))
+
       ;; 3. Skins
       (str/starts-with? uri "/skins/")
       (let [filename (subs uri 7)

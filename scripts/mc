@@ -49,6 +49,16 @@ case "$1" in
             echo "{\"ok\":false,\"error\":\"Player '$TARGET' not found or offline\"}"
         fi
         ;;
+    hole|detect-hole)
+        TARGET="${2:-pace}"
+        echo "🔍 Escaneando cavidade/buraco ao redor de $TARGET em tempo real..."
+        (cd /home/pace/dev/craft-repl && clojure -M scripts/detect_hole.clj "$TARGET")
+        ;;
+    flood|inundar)
+        TARGET="${2:-pace}"
+        echo "🌊 Disparando inundação e estabilização de água ao redor de $TARGET..."
+        (cd /home/pace/dev/craft-repl && clojure -M scripts/detect_hole.clj "$TARGET" --flood)
+        ;;
     enterprise|nave)
         TARGET="${2:-pace}"
         /usr/bin/python3 /home/pace/dev/craft-repl/scripts/build_enterprise.py "$TARGET" > /dev/null 2>&1 &
