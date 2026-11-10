@@ -77,7 +77,7 @@ public class ProbeStructures {
                         } catch (Throwable e) {}
                     }
 
-                    File out = new File("/home/pace/dev/craft-repl/target/nearby_structures.txt");
+                    File out = new File("/home/pace/dev/minecraft/craft-repl/target/nearby_structures.txt");
                     PrintWriter pw = new PrintWriter(new FileWriter(out));
                     for (String s : results) pw.println(s);
                     pw.close();

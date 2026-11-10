@@ -123,7 +123,7 @@ function initBot() {
         // Equip Uniform & Set Skin via server
         setTimeout(async () => {
             // Apply authentic Starfleet Captain Picard skin via Java Bytecode Injector
-            exec('/home/pace/dev/craft-repl/scripts/mc skin-restore Picard picard', (err, stdout, stderr) => {
+            exec('/home/pace/dev/minecraft/craft-repl/scripts/mc skin-restore Picard picard', (err, stdout, stderr) => {
                 if (err) console.error('[ERR] Skin restore error:', err);
                 else console.log('[+] Skin oficial do Capitão Picard injetada com sucesso!');
             });

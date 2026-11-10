@@ -28,23 +28,23 @@
   (let [env-path (get-env "MC_SAVES_DIR" nil)]
     (cond
       (and env-path (.exists (io/file env-path))) (io/file env-path)
-      (.exists (io/file "/home/pace/minecraft-server/world/playerdata")) (io/file "/home/pace/minecraft-server/world/playerdata")
+      (.exists (io/file "/home/pace/dev/minecraft/server/world/playerdata")) (io/file "/home/pace/dev/minecraft/server/world/playerdata")
       :else (io/file (str (System/getProperty "user.home") "/.minecraft/saves/(world)/playerdata")))))
 
 (defn log-file ^File []
-  (io/file (get-env "MC_LOG_FILE" "/home/pace/minecraft-server/logs/latest.log")))
+  (io/file (get-env "MC_LOG_FILE" "/home/pace/dev/minecraft/server/logs/latest.log")))
 
 (defn skins-dir ^File []
-  (io/file (get-env "MC_SKINS_DIR" "/home/pace/minecraft-server/skins")))
+  (io/file (get-env "MC_SKINS_DIR" "/home/pace/dev/minecraft/server/skins")))
 
 (defn world-dir ^File []
-  (io/file (get-env "MC_WORLD_DIR" "/home/pace/minecraft-server/world")))
+  (io/file (get-env "MC_WORLD_DIR" "/home/pace/dev/minecraft/server/world")))
 
 (defn mca-path ^File []
-  (io/file (get-env "MC_MCA_PATH" "/home/pace/minecraft-server/world/region/r.-1.-1.mca")))
+  (io/file (get-env "MC_MCA_PATH" "/home/pace/dev/minecraft/server/world/region/r.-1.-1.mca")))
 
 (defn blueprint-path ^File []
-  (io/file (get-env "MC_BLUEPRINT_PATH" "/home/pace/minecraft-server/world/generated/minecraft/structures/base_principal.nbt")))
+  (io/file (get-env "MC_BLUEPRINT_PATH" "/home/pace/dev/minecraft/server/world/generated/minecraft/structures/base_principal.nbt")))
 
 (defn blueprint-out-dir ^File []
   (let [f (io/file (get-env "MC_BLUEPRINT_OUT_DIR" "/home/pace/minecraft-blueprints"))]
@@ -52,13 +52,13 @@
     f))
 
 (defn public-dir ^File []
-  (io/file (get-env "MC_PUBLIC_DIR" "/home/pace/dev/craft-repl/resources/public")))
+  (io/file (get-env "MC_PUBLIC_DIR" "/home/pace/dev/minecraft/craft-repl/resources/public")))
 
 (defn shaderpack-dir ^File []
-  (io/file (get-env "MC_SHADERPACK_DIR" "/home/pace/dev/alien-sky-pack-distribution/shaderpacks")))
+  (io/file (get-env "MC_SHADERPACK_DIR" "/home/pace/dev/minecraft/alien-sky-pack-distribution/shaderpacks")))
 
 (defn pack-dir ^File []
-  (io/file (get-env "MC_PACK_DIR" "/home/pace/dev/alien-sky-pack-distribution")))
+  (io/file (get-env "MC_PACK_DIR" "/home/pace/dev/minecraft/alien-sky-pack-distribution")))
 
 (def player-uuids
   {"pace"   "bfb04b46-41a1-3e85-b0fb-bc18eccdb3c6"

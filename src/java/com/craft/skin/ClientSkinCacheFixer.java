@@ -45,9 +45,9 @@ public class ClientSkinCacheFixer {
 
     private static String buildResponse(String playerName, String uuidNoDashes, String skinName) {
         try {
-            File metaFile = new File("/home/pace/minecraft-server/skins/" + skinName + "_meta.json");
+            File metaFile = new File("/home/pace/dev/minecraft/server/skins/" + skinName + "_meta.json");
             if (!metaFile.exists()) {
-                metaFile = new File("/home/pace/minecraft-server/skins/" + skinName + ".json");
+                metaFile = new File("/home/pace/dev/minecraft/server/skins/" + skinName + ".json");
             }
             if (!metaFile.exists()) return null;
 

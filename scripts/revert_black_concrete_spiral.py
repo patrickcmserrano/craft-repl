@@ -10,7 +10,7 @@ import json
 import os
 import sys
 
-BACKUP_FILE = "/home/pace/dev/craft-repl/scripts/spiral_staircase_backup.json"
+BACKUP_FILE = "/home/pace/dev/minecraft/craft-repl/scripts/spiral_staircase_backup.json"
 HOST = "127.0.0.1"
 PORT = 25595
 

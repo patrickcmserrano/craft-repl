@@ -14,7 +14,7 @@ import subprocess
 import urllib.request
 import urllib.error
 
-LOG_PATH = "/home/pace/minecraft-server/logs/latest.log"
+LOG_PATH = "/home/pace/dev/minecraft/server/logs/latest.log"
 API_URL = "http://localhost:8090/api/run"
 TELEMETRY_URL = "http://localhost:8090/api/telemetry"
 
@@ -102,7 +102,7 @@ def handle_quick_commands(player, prompt):
         return True
     elif any(k in p for k in ["castelo gotico", "gothic castle", "mega castelo", "castelo 100x100"]):
         send_tellraw(f"🏰 Iniciando construção da Cidadela Gótica (100x100x90) para {player}...", color="gold", bold=True)
-        subprocess.Popen(["/usr/bin/python3", "/home/pace/dev/craft-repl/scripts/build_gothic_megacastle.py", player])
+        subprocess.Popen(["/usr/bin/python3", "/home/pace/dev/minecraft/craft-repl/scripts/build_gothic_megacastle.py", player])
         return True
     elif any(k in p for k in ["desfaça", "desfazer", "explode", "demolir", "remover", "limpar castelo"]):
         cmds = [

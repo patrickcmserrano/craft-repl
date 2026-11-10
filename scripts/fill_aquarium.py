@@ -2,7 +2,7 @@
 import urllib.request, json, time
 
 API_URL = "http://localhost:8090/api/run"
-FUNCTION_PATH = "/home/pace/minecraft-server/world/datapacks/blueprints/data/blueprints/function/fill_aquarium.mcfunction"
+FUNCTION_PATH = "/home/pace/dev/minecraft/server/world/datapacks/blueprints/data/blueprints/function/fill_aquarium.mcfunction"
 
 def run_cmd(cmd):
     data = json.dumps({"cmd": cmd}).encode("utf-8")

@@ -147,7 +147,7 @@ public class ProbeNearbyV3 {
                     sb.append("  }\n");
                     sb.append("}\n");
 
-                    File outFile = new File("/home/pace/dev/craft-repl/target/nearby_scan_v3.json");
+                    File outFile = new File("/home/pace/dev/minecraft/craft-repl/target/nearby_scan_v3.json");
                     PrintWriter pw = new PrintWriter(new FileWriter(outFile));
                     pw.print(sb.toString());
                     pw.close();

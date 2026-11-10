@@ -18,7 +18,7 @@ import json
 import os
 import sys
 
-BACKUP_FILE = "/home/pace/dev/craft-repl/scripts/tower_prototype_replica_backup.json"
+BACKUP_FILE = "/home/pace/dev/minecraft/craft-repl/scripts/tower_prototype_replica_backup.json"
 HOST = "127.0.0.1"
 PORT = 25595
 

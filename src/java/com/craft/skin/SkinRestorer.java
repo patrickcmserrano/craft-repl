@@ -15,9 +15,9 @@ public class SkinRestorer {
         System.out.println("[SkinRestorer] Aplicando skin offline '" + skinName + "' para jogador: " + targetPlayer);
 
         try {
-            File metaFile = new File("/home/pace/minecraft-server/skins/" + skinName.toLowerCase() + "_meta.json");
+            File metaFile = new File("/home/pace/dev/minecraft/server/skins/" + skinName.toLowerCase() + "_meta.json");
             if (!metaFile.exists()) {
-                metaFile = new File("/home/pace/minecraft-server/skins/" + skinName.toLowerCase() + ".json");
+                metaFile = new File("/home/pace/dev/minecraft/server/skins/" + skinName.toLowerCase() + ".json");
             }
             if (!metaFile.exists()) {
                 System.err.println("[SkinRestorer] Arquivo não encontrado: " + metaFile.getAbsolutePath());

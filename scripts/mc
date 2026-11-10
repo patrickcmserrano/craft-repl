@@ -27,9 +27,9 @@ if [ -z "$PID" ]; then
 fi
 
 JAVA_BIN="/home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/java"
-INJECTOR_CP="/home/pace/dev/craft-repl/target/bin"
-AGENT_JAR="/home/pace/dev/craft-repl/target/live-cmd.jar"
-TELEMETRY_JAR="/home/pace/dev/craft-repl/target/live-telemetry-agent.jar"
+INJECTOR_CP="/home/pace/dev/minecraft/craft-repl/target/bin"
+AGENT_JAR="/home/pace/dev/minecraft/craft-repl/target/live-cmd.jar"
+TELEMETRY_JAR="/home/pace/dev/minecraft/craft-repl/target/live-telemetry-agent.jar"
 
 run_cmd() {
     "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "$AGENT_JAR" "$1" > /dev/null 2>&1
@@ -52,21 +52,21 @@ case "$1" in
     hole|detect-hole)
         TARGET="${2:-pace}"
         echo "🔍 Escaneando cavidade/buraco ao redor de $TARGET em tempo real..."
-        (cd /home/pace/dev/craft-repl && clojure -M scripts/detect_hole.clj "$TARGET")
+        (cd /home/pace/dev/minecraft/craft-repl && clojure -M scripts/detect_hole.clj "$TARGET")
         ;;
     flood|inundar)
         TARGET="${2:-pace}"
         echo "🌊 Disparando inundação e estabilização de água ao redor de $TARGET..."
-        (cd /home/pace/dev/craft-repl && clojure -M scripts/detect_hole.clj "$TARGET" --flood)
+        (cd /home/pace/dev/minecraft/craft-repl && clojure -M scripts/detect_hole.clj "$TARGET" --flood)
         ;;
     enterprise|nave)
         TARGET="${2:-pace}"
-        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/build_enterprise.py "$TARGET" > /dev/null 2>&1 &
+        /usr/bin/python3 /home/pace/dev/minecraft/craft-repl/scripts/build_enterprise.py "$TARGET" > /dev/null 2>&1 &
         echo "🛸 Construção da USS Enterprise NCC-1701 iniciada para $TARGET!"
         ;;
     gothic-castle)
         TARGET="${2:-pace}"
-        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/build_gothic_megacastle.py "$TARGET" > /dev/null 2>&1 &
+        /usr/bin/python3 /home/pace/dev/minecraft/craft-repl/scripts/build_gothic_megacastle.py "$TARGET" > /dev/null 2>&1 &
         echo "🏛️ Construção da Cidadela Gótica (100x100x90) iniciada para $TARGET!"
         ;;
     home)
@@ -118,32 +118,32 @@ case "$1" in
         VD="${2:-24}"
         SD="${3:-10}"
         echo "🔭 Ajustando chunk view distance para $VD (simulação: $SD)..."
-        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/set-view-distance.jar" "$VD $SD" > /dev/null 2>&1
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/minecraft/craft-repl/target/set-view-distance.jar" "$VD $SD" > /dev/null 2>&1
         echo "✅ View distance aplicado em tempo real: $VD chunks (simulação: $SD)!"
         ;;
     purge-death-star|death-star-purge|clean-death-star)
         echo "🌑 Disparando expurgação e blindagem da Death Star..."
-        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/illuminate_death_star.py
+        /usr/bin/python3 /home/pace/dev/minecraft/craft-repl/scripts/illuminate_death_star.py
         ;;
     purge-castle|castle-purge|clean-castle)
         echo "🏰 Disparando expurgação e blindagem do Castelo e Pátio..."
-        /usr/bin/python3 /home/pace/dev/craft-repl/scripts/illuminate_castle.py
+        /usr/bin/python3 /home/pace/dev/minecraft/craft-repl/scripts/illuminate_castle.py
         ;;
     skin-backup)
         echo "💾 Extraindo e salvando backup da skin atual dos jogadores..."
-        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/extract-skin.jar" > /dev/null 2>&1
-        echo "✅ Skin salva com sucesso em /home/pace/minecraft-server/skins/!"
-        ls -la /home/pace/minecraft-server/skins/
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/minecraft/craft-repl/target/extract-skin.jar" > /dev/null 2>&1
+        echo "✅ Skin salva com sucesso em /home/pace/dev/minecraft/server/skins/!"
+        ls -la /home/pace/dev/minecraft/server/skins/
         ;;
     skin-restore)
         PLAYER="${2:-pace}"
         SKIN_NAME="${3:-pace}"
         echo "🔁 Restaurando skin offline de '$SKIN_NAME' para $PLAYER..."
         CLIENT_PID=$(pgrep -f "KnotClient" 2>/dev/null | head -n 1)
-        if [ -n "$CLIENT_PID" ] && [ -f "/home/pace/dev/craft-repl/target/fix-client-skin.jar" ]; then
-            "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$CLIENT_PID" "/home/pace/dev/craft-repl/target/fix-client-skin.jar" > /dev/null 2>&1 || true
+        if [ -n "$CLIENT_PID" ] && [ -f "/home/pace/dev/minecraft/craft-repl/target/fix-client-skin.jar" ]; then
+            "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$CLIENT_PID" "/home/pace/dev/minecraft/craft-repl/target/fix-client-skin.jar" > /dev/null 2>&1 || true
         fi
-        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/craft-repl/target/restore-skin.jar" "$PLAYER $SKIN_NAME" > /dev/null 2>&1
+        "$JAVA_BIN" -cp "$INJECTOR_CP" com.craft.agent.Injector "$PID" "/home/pace/dev/minecraft/craft-repl/target/restore-skin.jar" "$PLAYER $SKIN_NAME" > /dev/null 2>&1
         echo "✅ Skin '$SKIN_NAME' restaurada offline para $PLAYER sem depender de nick/internet!"
         ;;
     skin)
@@ -183,22 +183,22 @@ case "$1" in
         ;;
     backup)
         echo "💾 Disparando rotina de backup..."
-        /home/pace/minecraft-server/scripts/backup.sh
+        /home/pace/dev/minecraft/server/scripts/backup.sh
         ;;
     restore)
-        /home/pace/minecraft-server/scripts/restore.sh "$2"
+        /home/pace/dev/minecraft/server/scripts/restore.sh "$2"
         ;;
     pyramid)
-        (cd /home/pace/dev/craft-repl && clojure -M -e "(require '[craft.builds :as b]) (b/build-pyramid! ${2:--160} ${3:-70} ${4:--160} ${5:-25})")
+        (cd /home/pace/dev/minecraft/craft-repl && clojure -M -e "(require '[craft.builds :as b]) (b/build-pyramid! ${2:--160} ${3:-70} ${4:--160} ${5:-25})")
         ;;
     blueprint)
         SUB="${2:-backup}"
         case "$SUB" in
             backup)
-                (cd /home/pace/dev/craft-repl && clojure -M -e "(require '[craft.blueprint :as bp]) (println (second (bp/backup-main-base!)))")
+                (cd /home/pace/dev/minecraft/craft-repl && clojure -M -e "(require '[craft.blueprint :as bp]) (println (second (bp/backup-main-base!)))")
                 ;;
             restore)
-                (cd /home/pace/dev/craft-repl && clojure -M -e "(require '[craft.blueprint :as bp]) (println (second (bp/restore-blueprint!)))")
+                (cd /home/pace/dev/minecraft/craft-repl && clojure -M -e "(require '[craft.blueprint :as bp]) (println (second (bp/restore-blueprint!)))")
                 ;;
             *)
                 echo "Uso: mc blueprint [backup|restore]"
@@ -207,14 +207,14 @@ case "$1" in
         ;;
     attach)
         echo "🔌 Acoplando agente craft-repl Clojure no Minecraft..."
-        (cd /home/pace/dev/craft-repl && make attach)
+        (cd /home/pace/dev/minecraft/craft-repl && make attach)
         ;;
     eval|clj)
         if [ -z "$2" ]; then
             echo "Uso: mc eval \"(+ 1 2)\" ou mc clj \"(craft.player/players)\""
             exit 1
         fi
-        (cd /home/pace/dev/craft-repl && clojure -M -e "
+        (cd /home/pace/dev/minecraft/craft-repl && clojure -M -e "
           (require '[nrepl.core :as nrepl])
           (with-open [c (nrepl/connect :port 7888)]
             (let [client (nrepl/client c 10000)
@@ -225,7 +225,7 @@ case "$1" in
         ;;
     repl)
         echo "🌀 Conectando ao nREPL do Minecraft em 127.0.0.1:7888..."
-        (cd /home/pace/dev/craft-repl && make repl)
+        (cd /home/pace/dev/minecraft/craft-repl && make repl)
         ;;
     *)
         if [ -z "$1" ]; then

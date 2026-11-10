@@ -90,7 +90,7 @@ public class CraftAgent {
             }
 
             // 4. Registrar diretório src/clj do projeto
-            File srcClj = new File("/home/pace/dev/craft-repl/src/clj");
+            File srcClj = new File("/home/pace/dev/minecraft/craft-repl/src/clj");
             if (srcClj.exists()) {
                 vpcs.add(srcClj.toPath());
                 addUrlFwd.invoke(knotLoader, srcClj.toURI().toURL());

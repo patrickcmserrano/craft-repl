@@ -20,7 +20,7 @@
   (let [backend (or (System/getenv "MC_BACKEND") "clj")
         java-bin (str (System/getProperty "java.home") "/bin/java")
         cmd-args (if (= backend "py")
-                   ["/usr/bin/python3" "/home/pace/mc-dashboard/server.py"]
+                   ["/usr/bin/python3" "/home/pace/dev/minecraft/dashboard/server.py"]
                    [java-bin "-cp" (System/getProperty "java.class.path") "clojure.main" "-m" "craft.dashboard.server" (str port)])
         pb (ProcessBuilder. ^java.util.List cmd-args)
         env (.environment pb)]
@@ -35,7 +35,7 @@
     (.put env "MC_MCA_PATH" (str (clojure.java.io/file (:region-dir sandbox) "r.-1.-1.mca")))
     (.put env "MC_BLUEPRINT_OUT_DIR" (str (:blueprints-dir sandbox)))
     (.put env "MC_BLUEPRINT_PATH" (str (clojure.java.io/file (:blueprints-dir sandbox) "base_principal_latest.nbt")))
-    (.put env "MC_PUBLIC_DIR" "/home/pace/dev/craft-repl/resources/public")
+    (.put env "MC_PUBLIC_DIR" "/home/pace/dev/minecraft/craft-repl/resources/public")
     (.put env "MC_SHADERPACK_DIR" (str (:shaderpacks-dir sandbox)))
     (.put env "MC_PACK_DIR" (str (:pack-dir sandbox)))
     (.redirectOutput pb (java.lang.ProcessBuilder$Redirect/INHERIT))

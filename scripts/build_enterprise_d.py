@@ -29,7 +29,7 @@ import math
 import urllib.request
 
 API_URL = "http://192.168.1.20:8090/api/run"
-FUNCTION_PATH = "/home/pace/minecraft-server/world/datapacks/blueprints/data/blueprints/function/build_enterprise_d.mcfunction"
+FUNCTION_PATH = "/home/pace/dev/minecraft/server/world/datapacks/blueprints/data/blueprints/function/build_enterprise_d.mcfunction"
 
 def run_cmd(cmd):
     try:

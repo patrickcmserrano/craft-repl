@@ -9,8 +9,8 @@ import math
 import subprocess
 
 JAVA_BIN = "/home/pace/.minecraft/runtime/java-runtime-delta/linux/java-runtime-delta/bin/java"
-INJECTOR_CP = "/home/pace/dev/craft-repl/target/bin"
-AGENT_JAR = "/home/pace/dev/craft-repl/target/live-cmd.jar"
+INJECTOR_CP = "/home/pace/dev/minecraft/craft-repl/target/bin"
+AGENT_JAR = "/home/pace/dev/minecraft/craft-repl/target/live-cmd.jar"
 
 def get_pid():
     out = subprocess.check_output(["pgrep", "-f", "fabric-server-launcher"]).decode().strip()

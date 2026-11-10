@@ -13,7 +13,7 @@ import urllib.request
 
 API_URL = "http://localhost:8090/api/run"
 TELEM_URL = "http://localhost:8090/api/telemetry"
-LOG_PATH = "/home/pace/minecraft-server/logs/latest.log"
+LOG_PATH = "/home/pace/dev/minecraft/server/logs/latest.log"
 
 STATE = {
     "target": "Pace",

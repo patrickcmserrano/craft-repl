@@ -92,7 +92,7 @@ public class ExtractSkin {
                                 System.out.println("  TEXTURE URL: " + textureUrl);
 
                                 // Download PNG directly to ~/minecraft-server/skins/<name>.png
-                                File outDir = new File("/home/pace/minecraft-server/skins");
+                                File outDir = new File("/home/pace/dev/minecraft/server/skins");
                                 outDir.mkdirs();
                                 File outFile = new File(outDir, pName.toLowerCase() + "_current.png");
                                 InputStream in = new URL(textureUrl).openStream();
