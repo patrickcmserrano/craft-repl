@@ -1,0 +1,167 @@
+{
+  "version": 1,
+  "tasks": {
+    "architecture": {
+      "description": "how craft-repl is put together: the nREPL injector, the dashboard, the build and the two operating lines (blocks/builds and shaders)",
+      "roots": [
+        {
+          "id": "project-manifests",
+          "node_types": ["file"],
+          "path_globs": ["deps.edn", "Makefile", "mise.toml"],
+          "priority": "critical",
+          "why": "how this project is built and run"
+        },
+        {
+          "id": "architecture-docs",
+          "node_types": ["file"],
+          "path_globs": ["README*", "AGENTS.md"],
+          "priority": "critical",
+          "why": "the injector vision and the hot-attach rationale"
+        },
+        {
+          "id": "core-namespaces",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.core", "craft.player", "craft.world", "craft.bridge"],
+          "defined_in_repository": true,
+          "why": "the in-server-thread core the README leads with"
+        }
+      ],
+      "expand": {
+        "edge_types": ["requires"],
+        "hops": 1,
+        "direction": "out"
+      },
+      "closure": ["declares:both"]
+    },
+
+    "injector": {
+      "description": "the zero-install nREPL injector: Java Attach API, KnotClassLoader transposition and the in-server-thread bridge",
+      "roots": [
+        {
+          "id": "injector-core",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.core", "craft.bridge", "craft.config", "craft.schemas"],
+          "defined_in_repository": true,
+          "why": "the server discovery, the thread bridge and the config the injector needs"
+        },
+        {
+          "id": "attach-agent",
+          "node_types": ["file"],
+          "path_globs": ["src/java/com/craft/agent/**", "scripts/attach.clj"],
+          "priority": "critical",
+          "why": "the Java attach agent and the PID auto-detector that boots the nREPL"
+        }
+      ],
+      "expand": {
+        "edge_types": ["requires"],
+        "hops": 1,
+        "direction": "out"
+      },
+      "closure": ["declares:both"]
+    },
+
+    "dashboard": {
+      "description": "the local dashboard (:8090): HTTP server, proxies, the alien-sky shader distribution endpoints and the frontend assets",
+      "roots": [
+        {
+          "id": "dashboard-ns",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.dashboard.**"],
+          "defined_in_repository": true,
+          "why": "the HTTP server and the BlueMap proxy"
+        },
+        {
+          "id": "frontend-assets",
+          "node_types": ["file"],
+          "path_globs": ["resources/public/index.html", "resources/public/js/**", "resources/public/css/**"],
+          "priority": "critical",
+          "why": "the served frontend. textures/ is deliberately not a root: it is 2864 files of Minecraft art, selected only as texture lookups route to it"
+        }
+      ],
+      "expand": {
+        "edge_types": ["requires"],
+        "hops": 1,
+        "direction": "out"
+      },
+      "closure": ["declares:both"]
+    },
+
+    "builds": {
+      "description": "the procedural build operation: blueprint/edit scripts that place blocks in the live world (spirals, towers, castles, Enterprise, Death Star)",
+      "roots": [
+        {
+          "id": "build-scripts",
+          "node_types": ["file"],
+          "path_globs": ["scripts/build_*.py", "scripts/revert_*.py", "scripts/fill_*.py", "scripts/illuminate_*.py", "scripts/*.clj"],
+          "priority": "critical",
+          "why": "the scripts that carry the construction operation"
+        },
+        {
+          "id": "build-namespaces",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.builds", "craft.blueprint", "craft.nbt", "craft.inventory", "craft.chests"],
+          "defined_in_repository": true,
+          "why": "the Clojure layer the build scripts drive: blueprints, NBT, chests and inventory"
+        }
+      ],
+      "expand": {
+        "edge_types": ["requires"],
+        "hops": 2,
+        "direction": "out"
+      },
+      "closure": ["declares:both"]
+    },
+
+    "shaders": {
+      "description": "the alien-sky shader line: the shaderpack served by the dashboard and the distributions it hands to clients",
+      "roots": [
+        {
+          "id": "shader-endpoints",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.dashboard.server"],
+          "defined_in_repository": true,
+          "why": "the namespace holding /shaderpack, /api/shaderpack-manifest and /liz|/pack endpoints"
+        },
+        {
+          "id": "shader-assets",
+          "node_types": ["file"],
+          "path_globs": ["resources/public/*.zip"],
+          "priority": "critical",
+          "why": "the shaderpack and installer-pack binaries the dashboard serves"
+        }
+      ],
+      "expand": {
+        "edge_types": ["requires"],
+        "hops": 1,
+        "direction": "out"
+      },
+      "closure": ["declares:both"]
+    },
+
+    "testing": {
+      "description": "the test suite, what it covers and how it is run (make test / make test-live)",
+      "roots": [
+        {
+          "id": "test-namespaces",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.**-test", "craft.**.*-test"],
+          "defined_in_repository": true,
+          "why": "the contract tests: dashboard, builds-safety, inventory-chests, ui-assets"
+        },
+        {
+          "id": "test-harness",
+          "node_types": ["namespace"],
+          "name_globs": ["craft.test-helper", "craft.test-runner", "craft.fixtures", "craft.smoke-live"],
+          "defined_in_repository": true,
+          "why": "how the sandbox server is started and the suite is invoked"
+        }
+      ],
+      "expand": {
+        "edge_types": ["requires"],
+        "hops": 1,
+        "direction": "out"
+      },
+      "closure": ["declares:both"]
+    }
+  }
+}

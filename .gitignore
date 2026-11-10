@@ -8,3 +8,7 @@ target/
 *.class
 .DS_Store
 node_modules/
+# repo-index artifacts: the index is generated, tasks.json is policy and versioned.
+/.ai-factory/index/
+/.ai-factory/policy/
+/.ai-factory/benchmarks/
