@@ -260,7 +260,7 @@
 
       ;; 2b. Alien Sky Shaderpack Download & Manifest for Liz & Auto-Sync
       (= uri "/api/shaderpack-manifest")
-      (let [f (io/file (cfg/public-dir) "MakeUp-UltraFast-AlienSky.zip")]
+      (let [f (io/file (cfg/shaderpack-dir) "MakeUp-UltraFast-AlienSky.zip")]
         (println (str "[AutoSync] Manifest requested from " (:remote-addr req)))
         (if (.exists f)
           (let [sha1 (with-open [is (io/input-stream f)]
@@ -281,7 +281,7 @@
       (or (= uri "/MakeUp-UltraFast-AlienSky.zip")
           (= uri "/alien-sky.zip")
           (= uri "/shaderpack"))
-      (let [f (io/file (cfg/public-dir) "MakeUp-UltraFast-AlienSky.zip")]
+      (let [f (io/file (cfg/shaderpack-dir) "MakeUp-UltraFast-AlienSky.zip")]
         (println (str "[AutoSync] Shaderpack binary downloaded from " (:remote-addr req)))
         (if (.exists f)
           {:status 200
@@ -298,7 +298,7 @@
           (= uri "/pack")
           (= uri "/liz")
           (= uri "/lizzie"))
-      (let [f (io/file (cfg/public-dir) "AlienSky-AutoSync-Pack.zip")]
+      (let [f (io/file (cfg/pack-dir) "AlienSky-AutoSync-Pack.zip")]
         (if (.exists f)
           {:status 200
            :headers {"Content-Type" "application/zip"

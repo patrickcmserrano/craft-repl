@@ -54,6 +54,12 @@
 (defn public-dir ^File []
   (io/file (get-env "MC_PUBLIC_DIR" "/home/pace/dev/craft-repl/resources/public")))
 
+(defn shaderpack-dir ^File []
+  (io/file (get-env "MC_SHADERPACK_DIR" "/home/pace/dev/alien-sky-pack-distribution/shaderpacks")))
+
+(defn pack-dir ^File []
+  (io/file (get-env "MC_PACK_DIR" "/home/pace/dev/alien-sky-pack-distribution")))
+
 (def player-uuids
   {"pace"   "bfb04b46-41a1-3e85-b0fb-bc18eccdb3c6"
    "lizzie" "6d3fbe2d-c6f5-354f-b123-66dec0af223c"})

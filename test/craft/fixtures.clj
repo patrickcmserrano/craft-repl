@@ -175,6 +175,8 @@
         config-dir (io/file root "config" "mc-cli")
         skins-dir (io/file root "skins")
         blueprints-dir (io/file root "blueprints")
+        shaderpacks-dir (io/file root "shaderpacks")
+        pack-dir (io/file root "pack")
         world-dir (io/file root "world")]
     (.mkdirs saves-dir)
     (.mkdirs region-dir)
@@ -182,6 +184,8 @@
     (.mkdirs config-dir)
     (.mkdirs skins-dir)
     (.mkdirs blueprints-dir)
+    (.mkdirs shaderpacks-dir)
+    (.mkdirs pack-dir)
     
     ;; Write default pace.dat & lizzie.dat
     (write-player-dat! (io/file saves-dir "bfb04b46-41a1-3e85-b0fb-bc18eccdb3c6.dat")
@@ -215,6 +219,10 @@
     (spit (io/file logs-dir "latest.log")
           "-160, 107, -89 has the following block data: [{Slot: 0b, count: 16, id: \"minecraft:iron_ingot\"}]\n")
 
+    ;; Write dummy shaderpack + installer pack (served from their own configurable dirs)
+    (spit (io/file shaderpacks-dir "MakeUp-UltraFast-AlienSky.zip") "dummy-shaderpack-bytes")
+    (spit (io/file pack-dir "AlienSky-AutoSync-Pack.zip") "dummy-pack-bytes")
+
     {:root root
      :saves-dir saves-dir
      :region-dir region-dir
@@ -222,6 +230,8 @@
      :config-dir config-dir
      :skins-dir skins-dir
      :blueprints-dir blueprints-dir
+     :shaderpacks-dir shaderpacks-dir
+     :pack-dir pack-dir
      :world-dir world-dir}))
 
 (defn read-recorded-commands!

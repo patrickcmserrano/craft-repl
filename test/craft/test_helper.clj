@@ -36,6 +36,8 @@
     (.put env "MC_BLUEPRINT_OUT_DIR" (str (:blueprints-dir sandbox)))
     (.put env "MC_BLUEPRINT_PATH" (str (clojure.java.io/file (:blueprints-dir sandbox) "base_principal_latest.nbt")))
     (.put env "MC_PUBLIC_DIR" "/home/pace/dev/craft-repl/resources/public")
+    (.put env "MC_SHADERPACK_DIR" (str (:shaderpacks-dir sandbox)))
+    (.put env "MC_PACK_DIR" (str (:pack-dir sandbox)))
     (.redirectOutput pb (java.lang.ProcessBuilder$Redirect/INHERIT))
     (.redirectError pb (java.lang.ProcessBuilder$Redirect/INHERIT))
     (let [proc (.start pb)]
