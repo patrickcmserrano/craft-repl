@@ -100,7 +100,32 @@ make attach PID=195362 PORT=7888
 
 ---
 
-## 🎮 Interactive Live Coding Examples
+## 🔌 Consuming `craft-repl` (Building Something *On* It)
+
+`craft-repl` is not only a REPL for a human. It is an **injection library**: it
+boots a live Clojure runtime inside the game's `KnotClassLoader` and exposes an
+nREPL. Any tool — an agent, a service, a script — can connect to that channel
+and evaluate code **inside the running game**.
+
+The [`craft-agents`](https://github.com/patrickcmserrano/craft-agents) project
+is a real consumer: it raises two nREPL ports of its own (the engine at `:7891`,
+the server JVM at `:7890`) by replicating this same mechanism — it imports
+nothing from this repo, because the loader barrier it crosses is the same one.
+
+* **Guide:** [`docs/consumindo-o-craft-repl.md`](docs/consumindo-o-craft-repl.md)
+  — the `KnotClassLoader` recipe, the `id` gotcha of nREPL 1.3.0, and the port map.
+* **Runnable example:** [`examples/consumer_minimal.py`](examples/consumer_minimal.py)
+
+```bash
+# The craft-repl puts Clojure into the JVM (port 7888)
+make attach PID=$(pgrep -f fabric-server-launcher | head -1)
+
+# Your consumer talks to it
+python3 examples/consumer_minimal.py '(clojure.core/+ 1 2)'
+# => 3
+```
+
+---
 
 Once connected, you evaluate code directly inside the living game state:
 
@@ -177,8 +202,13 @@ craft-repl/
 ├── README.md                    # Project documentation
 ├── deps.edn                     # Clojure 1.12, nREPL, core.async, malli
 ├── mise.toml                    # Toolchain pinning (Java 25, Clojure 1.12)
+├── docs/
+│   └── consumindo-o-craft-repl.md  # Guide for tools built ON craft-repl
+├── examples/
+│   └── consumer_minimal.py      # Runnable end-to-end consumer example
 ├── scripts/
-│   └── attach.clj               # Babashka PID auto-detector & injector script
+│   ├── attach.clj               # Babashka PID auto-detector & injector script
+│   └── repl-probe.py            # Minimal nREPL client (port 7888)
 ├── src/
 │   ├── clj/
 │   │   └── craft/

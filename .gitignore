@@ -6,6 +6,7 @@ target/
 .cider-repl-history
 *.jar
 *.class
+__pycache__/
 .DS_Store
 node_modules/
 # repo-index artifacts: the index is generated, tasks.json is policy and versioned.
