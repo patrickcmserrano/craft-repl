@@ -115,7 +115,31 @@ mordem:
   `value`/`done` **sai antes de ler** e devolve vazio.
 
 Um cliente mínimo que já implementa tudo isso está em
-[`scripts/repl-probe.py`](../scripts/repl-probe.py) (porta `7888`).
+[`scripts/repl_probe.py`](../scripts/repl-probe.py) (porta `7888`).
+
+## 3b. O cliente em Clojure (o caminho preferido)
+
+O mesmo cliente existe em **Clojure** — `scripts/repl_client.clj` — e é o caminho
+preferido: em vez de embarcar um bencode próprio, usa o **`nrepl.bencode` que o
+próprio servidor usa**, o mesmo parser dos dois lados do fio. Isso elimina de
+raiz a classe de defeitos que o cliente Python custou (netstring em bytes vs
+caracteres, ordem das chaves, `recv` bloqueante).
+
+```bash
+# porta default 7888; use --port 7891 para a porta do engine do craft-agents
+clojure -M:scripts -m repl-client '(+ 1 2)'
+clojure -M:scripts -m repl-client --file sonda.clj
+```
+
+Sem o alias `:scripts` (já no `deps.edn`), use a forma direta:
+
+```bash
+clojure -Sdeps '{:paths ["src/clj" "scripts"]}' -M -m repl-client '(+ 1 2)'
+```
+
+Provado contra a `7888` viva: `(+ 1 2)` → `=> 3`; `(require 'craft.core)` →
+`#object[clojure.lang.Namespace ... "craft.core"]`; e um erro de compilação sai
+em `--- ERR --- No such var: clojure.core/nonexistent-fn`.
 
 ---
 

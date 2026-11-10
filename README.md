@@ -98,6 +98,19 @@ make attach PID=195362 PORT=7888
   make repl PORT=7888
   ```
 
+### 3. Scriptable One-Shot Client
+
+`make repl` opens an *interactive* REPL. For evaluating a single form inside a
+script or pipe, use the versioned client — it speaks the nREPL protocol with the
+**same `nrepl.bencode` parser the server uses**, so it has none of the hand-rolled
+bencode pitfalls:
+
+```bash
+clojure -M:scripts -m repl-client '(+ 1 2)'          # => 3
+clojure -M:scripts -m repl-client --file sonda.clj
+clojure -M:scripts -m repl-client --port 7891 '(+ 40 2)'
+```
+
 ---
 
 ## 🔌 Consuming `craft-repl` (Building Something *On* It)
