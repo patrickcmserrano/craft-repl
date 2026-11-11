@@ -456,6 +456,12 @@ function giveWeaponKit(weaponType, target) {
                 `give ${nick} minecraft:trial_key[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
             ];
             break;
+        case 'frost_wand':
+            title = 'Cristal de Gelo (64 Cargas — Raio Congelante)';
+            cmds = [
+                `give ${nick} minecraft:amethyst_shard[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+            ];
+            break;
         case 'full_arsenal':
             title = 'Arsenal Militar Completo';
             cmds = [
