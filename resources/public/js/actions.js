@@ -423,6 +423,12 @@ function giveWeaponKit(weaponType, target) {
                 `give ${nick} trident[custom_name='"Tridente de Poseidon"',enchantments={levels:{loyalty:3,channeling:1,impaling:5,unbreaking:3}},unbreakable={}] 1`
             ];
             break;
+        case 'fire_wand':
+            title = 'Varinha de Fogo (64 Cargas)';
+            cmds = [
+                `give ${nick} minecraft:blaze_rod[custom_data={varinha_fogo:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+            ];
+            break;
         case 'full_arsenal':
             title = 'Arsenal Militar Completo';
             cmds = [
