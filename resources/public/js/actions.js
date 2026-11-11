@@ -450,6 +450,12 @@ function giveWeaponKit(weaponType, target) {
                 `give ${nick} minecraft:breeze_rod[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
             ];
             break;
+        case 'lightning_wand':
+            title = 'Cetro do Trovão (64 Cargas — Relâmpago do Julgamento)';
+            cmds = [
+                `give ${nick} minecraft:lightning_rod[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+            ];
+            break;
         case 'full_arsenal':
             title = 'Arsenal Militar Completo';
             cmds = [
