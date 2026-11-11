@@ -4,6 +4,7 @@
             [craft.core-player-world-test]
             [craft.inventory-chests-contract-test]
             [craft.builds-safety-contract-test]
+            [craft.rail-spiral-contract-test]
             [craft.blueprint-http-contract-test]
             [craft.ui-assets-test]))
 
@@ -14,6 +15,7 @@
   (let [results (test/run-tests 'craft.core-player-world-test
                                 'craft.inventory-chests-contract-test
                                 'craft.builds-safety-contract-test
+                                'craft.rail-spiral-contract-test
                                 'craft.blueprint-http-contract-test
                                 'craft.ui-assets-test)]
     (println "\n--------------------------------------------------")

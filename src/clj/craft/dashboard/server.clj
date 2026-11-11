@@ -450,6 +450,22 @@
       (let [[ok? msg] (builds/undo-titanic-castle!)]
         (json-resp (if ok? 200 400) {:ok ok? :message msg}))
 
+      ;; 11c. Builds: Circular Rail Spiral (minecart helix)
+      (and (= method :post) (= uri "/api/build/rail-spiral"))
+      (let [body (parse-json-body req)
+            cx (Integer/parseInt (str (get-param params body :x -47)))
+            cy (Integer/parseInt (str (get-param params body :y 65)))
+            cz (Integer/parseInt (str (get-param params body :z 263)))
+            r (Integer/parseInt (str (get-param params body :radius 7)))
+            y1 (Integer/parseInt (str (or (get-param params body :height nil) (get-param params body :top 100))))
+            turns (Integer/parseInt (str (get-param params body :turns 7)))
+            [ok? msg] (builds/build-rail-spiral! cx cy cz r y1 turns)]
+        (json-resp (if ok? 200 500) {:ok ok? :message msg}))
+
+      (and (= method :post) (= uri "/api/build/undo-rail-spiral"))
+      (let [[ok? msg] (builds/undo-rail-spiral!)]
+        (json-resp (if ok? 200 400) {:ok ok? :message msg}))
+
       (and (= method :post) (= uri "/api/monsters/purge-underground"))
       (let [body (parse-json-body req)
             player (get-param params body :player "pace")

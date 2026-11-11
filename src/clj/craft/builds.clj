@@ -857,6 +857,116 @@
       [true (str "🌌 Castelo Titânico do Vazio (41x41) erguido em [" cx ", " cy ", " cz "] — muralha dupla, fosso, 4 torres colossais, torreão com pináculo e farol!")])
     [false (str "Jogador " player-name " não encontrado para determinar coordenadas.")]))
 
+;; --- ESPIRAL CIRCULAR DE TRILHOS (MONTAINHA-RUSSA HELICOIDAL) ---
+
+(defn rail-spiral-plan
+  "Pure geometry for a circular minecart rail helix.
+
+  Returns a map with:
+    :cells  vector of {:x :y :z :kind} in ascending Y order, where :kind is
+            :track (a rail cell), :support (block under the track),
+            :wall (containment block beside the track), :light (lamp),
+            :station (arrival platform at the target height).
+    :bounds [min-x max-x min-z max-z top-y] envelope for undo.
+
+  The car climbs `turns` full rotations from `y0` up to `y1`, keeping a
+  constant radius `r` around [cx cz]."
+  [cx y0 cz r y1 turns]
+  (let [circ (max 4 (int (Math/round (* 2 Math/PI (double r)))))
+        total-steps (* turns circ)
+        rise-every (max 1 (int (Math/floor (/ (double total-steps) (max 1 (- y1 y0))))))
+        ;; Marcha ortogonal: para cada passo de arco, caminha em X e depois em Z
+        ;; ate' o ponto-alvo, garantindo que blocos consecutivos sejam vizinhos.
+        walk (loop [i 0 px cx pz cz acc []]
+               (if (> i total-steps)
+                 acc
+                 (let [t (/ (double i) (double circ))
+                       tx (int (Math/round (+ cx (* r (Math/cos (* 2 Math/PI t))))))
+                       tz (int (Math/round (+ cz (* r (Math/sin (* 2 Math/PI t))))))
+                       sx (if (< px tx) 1 (if (> px tx) -1 0))
+                       sz (if (< pz tz) 1 (if (> pz tz) -1 0))]
+                   (if (and (zero? sx) (zero? sz))
+                     (recur (inc i) px pz acc)
+                     (let [n (inc (count acc))
+                           y (min y1 (+ y0 (quot n rise-every)))
+                           acc' (conj acc {:x px :y y :z pz})]
+                       (recur i (if (not (zero? sx)) (+ px sx) px) (if (zero? sx) (+ pz sz) pz) acc'))))))
+        track-cells (->> walk
+                         (reduce (fn [acc c]
+                                   (if (some #(= [(:x %) (:y %) (:z %)] [(:x c) (:y c) (:z c)]) acc)
+                                     acc (conj acc c)))
+                                 [])
+                         (map-indexed (fn [i c] (assoc c :kind (if (zero? (mod i 4)) :track-powered :track)))))
+        support-cells (map (fn [c] {:x (:x c) :y (dec (:y c)) :z (:z c) :kind :support}) track-cells)
+        wall-cells (mapcat (fn [c]
+                             [{:x (inc (:x c)) :y (:y c) :z (:z c) :kind :wall}
+                              {:x (dec (:x c)) :y (:y c) :z (:z c) :kind :wall}])
+                           track-cells)
+        light-cells (->> track-cells
+                         (keep-indexed (fn [i c] (when (zero? (mod i 6))
+                                                   {:x (:x c) :y (inc (:y c)) :z (:z c) :kind :light}))))
+        station-cells (for [sx (range (- cx 2) (+ cx 3))
+                            sz (range (- cz 2) (+ cz 3))]
+                        {:x sx :y y1 :z sz :kind :station})
+        ;; Stopping detector rail at the arrival deck (the car halts on the pad).
+        detector-cells [{:x cx :y y1 :z cz :kind :detector}
+                        {:x cx :y (dec y1) :z cz :kind :support}]
+        ;; One block per position: detector > rails > support > light > station > wall.
+        ;; Support outranks wall so a rail always has a solid base under it.
+        priority {:detector 0 :track-powered 1 :track 1 :support 2 :light 3 :station 4 :wall 5}
+        all-cells (->> (concat detector-cells track-cells support-cells wall-cells light-cells station-cells)
+                       (sort-by (comp priority :kind))
+                       (reduce (fn [acc c]
+                                 (if (some #(= [(:x %) (:y %) (:z %)] [(:x c) (:y c) (:z c)]) acc)
+                                   acc (conj acc c)))
+                               []))]
+    {:cells (vec all-cells)
+     :bounds [(- cx (inc r)) (+ cx (inc r)) (- cz (inc r)) (+ cz (inc r)) (inc y1)]}))
+
+(defn- rail-block-token [kind]
+  (case kind
+    :track-powered "powered_rail"
+    :track "rail"
+    :support "stone_bricks"
+    :wall "stone_brick_wall"
+    :light "lantern"
+    :station "stone_bricks"
+    :detector "detector_rail"
+    "stone_bricks"))
+
+(defn build-rail-spiral!
+  "Builds a circular rail spiral for a minecart from the ground up to `y1`.
+
+  `cx cy cz` is the spiral axis base (cy is ignored for the axis, only the
+  ground-relative Y matters); `r` the radius; `y1` the arrival height."
+  [cx cy cz r y1 turns]
+  (bridge/run-command! "save-all")
+  (let [{:keys [cells bounds]} (rail-spiral-plan cx cy cz r y1 turns)
+        ;; Floor first (support/walls/lamps/station), rails last: a rail placed
+        ;; before its solid base is dropped by the server on the next tick.
+        rail-kinds #{:track :track-powered :detector}
+        ordered (concat (remove #(rail-kinds (:kind %)) cells)
+                        (filter #(rail-kinds (:kind %)) cells))
+        cmds (mapv (fn [{:keys [x y z kind]}]
+                     (str "setblock " x " " y " " z " " (rail-block-token kind) " replace"))
+                   ordered)]
+    (save-undo-state! :rail-spiral {:bounds bounds :cx cx :cz cz :cy cy})
+    (doseq [c cmds] (bridge/run-command! c))
+    [true (str "🛤️ Espiral circular de trilhos erguida em [" cx ", " cz "] — raio " r ", "
+               (count cells) " blocos, subindo de Y=" cy " até Y=" y1 " em " turns " voltas.")]))
+
+(defn undo-rail-spiral!
+  "Clears the rail spiral envelope and restores grass on the floor."
+  []
+  (if-let [state (:rail-spiral (get-undo-state))]
+    (let [[x1 x2 z1 z2 top] (:bounds state)
+          cmds [(str "fill " x1 " " (- (:cy state) 2) " " z1 " " x2 " " top " " z2 " air replace")
+                (str "fill " x1 " " (- (:cy state) 1) " " z1 " " x2 " " (- (:cy state) 1) " " z2 " grass_block replace")]]
+      (doseq [c cmds] (bridge/run-command! c))
+      (save-undo-state! :rail-spiral nil)
+      [true (str "↩️ Espiral de trilhos em [" (:cx state) ", " (:cz state) "] desfeita e terreno restaurado.")])
+    [false "Nenhuma espiral de trilhos recente encontrada para desfazer."]))
+
 (defn undo-titanic-castle!
   "Demolishes the Titanic Void Citadel, drains its moat and restores natural grass terrain."
   []
