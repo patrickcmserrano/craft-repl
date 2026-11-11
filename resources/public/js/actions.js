@@ -317,7 +317,22 @@ function setWeaponTarget(target) {
 
 function giveWeaponKit(weaponType, target) {
     const tgt = target || currentWeaponTarget || 'me';
-    const nick = tgt === 'all' ? '@a' : (tgt === 'partner' ? getPartnerNick() : getMyNick());
+    let nick = getMyNick();
+    let partnerFallback = false;
+
+    if (tgt === 'all') {
+        nick = '@a';
+    } else if (tgt === 'partner') {
+        const partner = getPartnerNick();
+        const isOnline = telemetryData && telemetryData.players && telemetryData.players.some(p => p.online && p.name.toLowerCase() === partner.toLowerCase());
+        if (isOnline) {
+            nick = partner;
+        } else {
+            nick = getMyNick();
+            partnerFallback = true;
+        }
+    }
+
     let cmds = [];
     let title = '';
 
@@ -426,7 +441,13 @@ function giveWeaponKit(weaponType, target) {
         case 'fire_wand':
             title = 'Varinha de Fogo (64 Cargas)';
             cmds = [
-                `give ${nick} minecraft:blaze_rod[custom_data={varinha_fogo:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+                `give ${nick} minecraft:blaze_rod[custom_data={varinha_fogo:1b,varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+            ];
+            break;
+        case 'wind_wand':
+            title = 'Cajado dos Ventos (64 Cargas — Onda de Choque)';
+            cmds = [
+                `give ${nick} minecraft:breeze_rod[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
             ];
             break;
         case 'full_arsenal':
@@ -517,7 +538,11 @@ function giveWeaponKit(weaponType, target) {
     }
 
     runCmd(cmds.join(' && '));
-    showToast(`⚔️ ${title} enviado para ${nick}!`);
+    if (partnerFallback) {
+        showToast(`⚠️ Parceiro (${getPartnerNick()}) offline! ${title} entregue para você (${nick}).`);
+    } else {
+        showToast(`⚔️ ${title} enviado para ${nick}!`);
+    }
 }
 
 function triggerInstaTnt() {
