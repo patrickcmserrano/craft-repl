@@ -2,7 +2,7 @@ const mineflayer = require('mineflayer');
 const { pathfinder, Movements, goals } = require('mineflayer-pathfinder');
 const { Vec3 } = require('vec3');
 const { spawn } = require('child_process');
-const http = require('http');
+const patrol = require('./patrol.js');
 
 const CONFIG = {
     host: '127.0.0.1',
@@ -114,22 +114,37 @@ let lastHeartBeat = 0;
 let lastBarkTime = 0;
 let lastChatReplyTime = 0;
 
+// Remetente persistente do dashboard (:8090). Substitui o http.request avulso
+// que nunca drenava a resposta e acumulou 49.423 conexões ESTAB no dia 2026-11-10.
+const serverCmd = patrol.createServerCmdSender({ host: 'localhost', port: 8090, path: '/api/run', maxSockets: 4 });
+
 function runServerCmd(cmd) {
-    const postData = JSON.stringify({ cmd: cmd });
-    const req = http.request({
-        hostname: 'localhost',
-        port: 8090,
-        path: '/api/run',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-        }
-    }, () => {});
-    req.on('error', () => {});
-    req.write(postData);
-    req.end();
+    serverCmd.run(cmd);
 }
+
+// Teleporte de fallback: além de mandar o `tp`, sincroniza a posição local.
+// Sem isto o pathfinder seguia calculando de um ponto fantasma e re-emitia
+// `forward` para sempre (o "moved wrongly!" recorrente no log do servidor).
+function teleportKarlach(x, z) {
+    runServerCmd(`tp Karlach ${x} 65 ${z}`);
+    patrol.reconcileAfterTeleport(bot, { x, y: 65, z });
+}
+
+// Watchdog da patrulha: se o goal não avançar, re-arma em vez de morrer em silêncio.
+const patrolWatchdog = patrol.createPatrolWatchdog({
+    timeoutMs: 20000,
+    onStuck: (goal) => {
+        console.warn(`[KARLACH-WATCHDOG] Sem progresso para [${goal.x}, ${goal.z}] há 20s. Re-armando a patrulha.`);
+        if (isFeeding) return;
+        if (!bot || !bot.entity) return;
+        bot.setControlState('forward', false);
+        bot.setControlState('sneak', false);
+        if (isPatrolling && !inCombat && !isFollowing) {
+            currentWpIndex = (currentWpIndex + 1) % PROMENADE_WAYPOINTS.length;
+            moveToNextWaypoint();
+        }
+    },
+});
 
 function askGeminiKarlach(speaker, prompt, callback) {
     const sysPrompt = `Você é a Karlach de Baldur's Gate 3, uma bárbara Tiefling com um motor infernal de Zariel queimando no peito, agora protetora oficial do Santuário de Animais do castelo com Pace e Lizzie.
@@ -168,6 +183,7 @@ function moveToNextWaypoint() {
 
     // Define o objetivo do pathfinder com precisão suave (raio de 1 bloco)
     bot.pathfinder.setGoal(new goals.GoalNear(wp.pos.x, wp.pos.y, wp.pos.z, 1.0));
+    patrolWatchdog.arm(wp.pos.x, wp.pos.z);
 }
 
 async function toggleGate(gateX, gateY, gateZ, facing, gateType, shouldOpen) {
@@ -183,11 +199,9 @@ async function toggleGate(gateX, gateY, gateZ, facing, gateType, shouldOpen) {
 
 async function stepThroughGate(targetX, targetZ, durationMs = 900) {
     if (!bot || !bot.entity) return;
-    await bot.lookAt(new Vec3(targetX, bot.entity.position.y + 1.6, targetZ), true);
-    await new Promise(r => setTimeout(r, 150));
-    bot.setControlState('forward', true);
-    await new Promise(r => setTimeout(r, durationMs));
-    bot.setControlState('forward', false);
+    // Delega ao núcleo testável: o `forward` é liberado no finally, mesmo que o
+    // passo seja interrompido — era isto que deixava a Karlach "nadando" parada.
+    await patrol.stepThroughGate(bot, targetX, targetZ, durationMs);
 }
 
 async function handleEnclosureVisit(wp) {
@@ -210,10 +224,10 @@ async function handleEnclosureVisit(wp) {
         // Garantir que está dentro antes de fechar o portão
         const isEast = wp.gatePos.x > -175;
         if (isEast && bot.entity.position.x < -170.5) {
-            runServerCmd(`tp Karlach ${wp.insidePenPos.x} 65 ${wp.insidePenPos.z}`);
+            teleportKarlach(wp.insidePenPos.x, wp.insidePenPos.z);
             await new Promise(r => setTimeout(r, 200));
         } else if (!isEast && bot.entity.position.x > -179.5) {
-            runServerCmd(`tp Karlach ${wp.insidePenPos.x} 65 ${wp.insidePenPos.z}`);
+            teleportKarlach(wp.insidePenPos.x, wp.insidePenPos.z);
             await new Promise(r => setTimeout(r, 200));
         }
 
@@ -289,10 +303,10 @@ async function handleEnclosureVisit(wp) {
 
         // Garantir que ela está 100% FORA do cercado na calçada
         if (isEast && bot.entity.position.x > -172.0) {
-            runServerCmd(`tp Karlach ${wp.pos.x} 65 ${wp.pos.z}`);
+            teleportKarlach(wp.pos.x, wp.pos.z);
             await new Promise(r => setTimeout(r, 200));
         } else if (!isEast && bot.entity.position.x < -178.0) {
-            runServerCmd(`tp Karlach ${wp.pos.x} 65 ${wp.pos.z}`);
+            teleportKarlach(wp.pos.x, wp.pos.z);
             await new Promise(r => setTimeout(r, 200));
         }
 
@@ -337,6 +351,9 @@ function onArrivedAtWaypoint() {
     if (!bot || !isPatrolling || inCombat || isRestingAtWp) return;
 
     isRestingAtWp = true;
+    // O waypoint foi atingido: o watchdog não tem mais o que vigiar. A visita
+    // ao cercado é longa e emite goals próprios, então fica sem watchdog.
+    patrolWatchdog.disarm();
     const wp = PROMENADE_WAYPOINTS[currentWpIndex];
     console.log(`[KARLACH-ROUTINE] Chegou em: ${wp.name}.`);
 
@@ -379,6 +396,11 @@ function createBot() {
             runServerCmd('effect give Karlach minecraft:resistance 99999 255 true');
             runServerCmd('effect give Karlach minecraft:fire_resistance 99999 255 true');
             runServerCmd('effect give Karlach minecraft:regeneration 99999 5 true');
+            // O corpo é um bot-cliente mineflayer: ele nunca come, então o servidor
+            // mantém foodLevel=0 e aplica starvation a cada 80 ticks — o dano é
+            // anulado pelo resistance 255, mas o HurtTime dispara e a entidade pisca
+            // vermelha. O efeito saturation repõe a comida pelo lado do servidor.
+            runServerCmd('effect give Karlach minecraft:saturation 99999 255 true');
 
             bot.swingArm('right');
             bot.chat('Passos firmes e suaves, soldado! Cuidando da bicharada no santuário.');
@@ -389,6 +411,7 @@ function createBot() {
 
         // Evento de chegada ao objetivo do Pathfinder
         bot.on('goal_reached', () => {
+            patrolWatchdog.disarm();
             if (isPatrolling && !inCombat && !isFollowing && !isRestingAtWp) {
                 onArrivedAtWaypoint();
             }
@@ -397,6 +420,13 @@ function createBot() {
         // Loop de Efeitos Visuais & Monitoramento (a cada 250ms)
         setInterval(() => {
             if (!bot || !bot.entity) return;
+
+            // 0. Alimenta o watchdog com a posição real; se parar de se aproximar
+            //    do waypoint, ele re-arma a patrulha em vez de deixá-la morrer.
+            //    Só vale durante a patrulha: em combate/follow os goals são outros.
+            if (isPatrolling && !inCombat && !isFollowing && !isRestingAtWp) {
+                patrolWatchdog.progress(bot.entity.position);
+            }
 
             // 1. Motor Infernal (Chamas & Fumaça no peito a cada 2s)
             if (Date.now() - lastHeartBeat > 2000) {
