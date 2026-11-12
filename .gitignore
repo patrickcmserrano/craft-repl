@@ -13,3 +13,6 @@ node_modules/
 /.ai-factory/index/
 /.ai-factory/policy/
 /.ai-factory/benchmarks/
+
+# Dev/debug scripts
+scripts/repl*.py
