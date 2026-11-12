@@ -76,12 +76,21 @@ public class CraftAgent {
                     if (line.isEmpty()) continue;
                     File jar = new File(line);
                     if (jar.exists()) {
+                        // O appendToSystemClassLoaderSearch é NECESSÁRIO: o
+                        // addUrlFwd do Knot registra o URL mas não o torna
+                        // buscável por loadClass, então sem esta linha o
+                        // Class.forName("clojure.lang.RT", ..., knotLoader)
+                        // morre com ClassNotFoundException. Medido em
+                        // 2026-11-10: sem o append, 30 dependências "registradas"
+                        // e mesmo assim classe não encontrada.
                         inst.appendToSystemClassLoaderSearch(new JarFile(jar));
                         Path p = jar.toPath();
                         vpcs.add(p);
                         try {
                             addUrlFwd.invoke(knotLoader, jar.toURI().toURL());
-                        } catch (Throwable ignored) {}
+                        } catch (Throwable t) {
+                            System.err.println("[craft-repl] AVISO addUrlFwd falhou em " + jar.getName() + ": " + t);
+                        }
                         count++;
                     }
                 }
@@ -98,6 +107,11 @@ public class CraftAgent {
             }
 
             // 5. Carregar Clojure Runtime (clojure.lang.RT)
+            // O Knot é o ÚNICO loader que enxerga o Clojure nesta JVM — os jars
+            // são registrados só nele (vpcs + addUrlFwd acima), e o loader da
+            // thread do Attach Listener (System) não os vê. Por isso o loader
+            // explícito é obrigatório aqui: sem ele o Class.forName morre com
+            // ClassNotFoundException.
             Class<?> rtClass = Class.forName("clojure.lang.RT", true, knotLoader);
             System.out.println("[craft-repl] Clojure runtime carregado com sucesso: " + rtClass.getName());
 
@@ -105,12 +119,21 @@ public class CraftAgent {
             Class<?> compilerClass = Class.forName("clojure.lang.Compiler", true, knotLoader);
             Method loadMethod = compilerClass.getMethod("load", java.io.Reader.class);
 
+            // O nREPL spawna as threads de handler num ThreadPoolExecutor, e elas
+            // herdam o contextClassLoader da thread que CRIA o servidor. A thread
+            // do Attach Listener não é a do Knot, então os handlers nasciam sem
+            // acesso às classes do Clojure e o send da resposta morria com
+            // ClassNotFoundException: clojure.lang.RT (visto em print.clj:94).
+            // Fixar o Knot aqui faz o pool herdar o loader certo.
+            Thread.currentThread().setContextClassLoader(knotLoader);
+
             String cljScript =
                 "(try " +
                 "  (require 'nrepl.server) " +
                 "  (let [start-srv (resolve 'nrepl.server/start-server)] " +
-                "    (defonce craft-nrepl-server (start-srv :port " + port + " :bind \"127.0.0.1\")) " +
-                "    (println \"[craft-repl] 🚀🚀🚀 nREPL Server escutando em 127.0.0.1:\" " + port + ")) " +
+                "    (defonce craft-nrepl-server " +
+                "      (start-srv :port " + port + " :bind \"127.0.0.1\")) " +
+                "    (println \"[craft-repl] nREPL escutando em 127.0.0.1:\" " + port + ")) " +
                 "  (catch Throwable t " +
                 "    (println \"[craft-repl] Erro ao iniciar nREPL:\" (.getMessage t)) " +
                 "    (.printStackTrace t)))";
