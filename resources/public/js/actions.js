@@ -462,6 +462,20 @@ function giveWeaponKit(weaponType, target) {
                 `give ${nick} minecraft:amethyst_shard[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
             ];
             break;
+        case 'shadow_wand':
+        case 'shadow_step':
+            title = 'Passo das Sombras (64 Cargas — Teleporte Tático)';
+            cmds = [
+                `give ${nick} minecraft:echo_shard[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+            ];
+            break;
+        case 'tidal_orb':
+        case 'tidal_surge':
+            title = 'Orbe das Marés (64 Cargas — Torrente Aquática)';
+            cmds = [
+                `give ${nick} minecraft:heart_of_the_sea[custom_data={varinha_magica:1b},food={nutrition:0,saturation:0,can_always_eat:true,eat_seconds:1000000},max_damage=64,damage=0,max_stack_size=1] 1`
+            ];
+            break;
         case 'full_arsenal':
             title = 'Arsenal Militar Completo';
             cmds = [
