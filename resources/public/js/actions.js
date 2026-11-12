@@ -53,7 +53,7 @@ function updateDynamicUI() {
 
     // AirDrop section header
     const airdropHeader = document.getElementById('airdropHeaderTitle');
-    if (airdropHeader) airdropHeader.textContent = `🎁 AirDrop Imediato para ${partnerDisplay}`;
+    if (airdropHeader) airdropHeader.textContent = `🎁 AirDrop Imediato para ${getMyDisplay()}`;
 
     // Gear & Chests
     const btnQuickRepair = document.getElementById('btnQuickRepair');
@@ -630,9 +630,9 @@ async function purgeUndergroundMonstersAction() {
 }
 
 function airdropItem(item, count) {
-    const partner = getPartnerNick();
-    runCmd(`give ${partner} ${item} ${count}`);
-    showToast(`🎁 Enviado ${count}x ${item} para ${partner}!`);
+    const player = getMyNick();
+    runCmd(`give ${player} ${item} ${count}`);
+    showToast(`🎁 Enviado ${count}x ${item} para ${player}!`);
 }
 
 function applySkin(target) {

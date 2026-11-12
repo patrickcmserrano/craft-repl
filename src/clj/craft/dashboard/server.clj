@@ -23,6 +23,17 @@
               "Access-Control-Allow-Origin" "*"}
     :body (json/write-str body :escape-slash false)}))
 
+(defn- sha1-file [^File file]
+  (with-open [is (io/input-stream file)]
+    (let [md (java.security.MessageDigest/getInstance "SHA-1")
+          buf (byte-array 8192)]
+      (loop []
+        (let [n (.read is buf)]
+          (when (pos? n)
+            (.update md buf 0 n)
+            (recur))))
+      (format "%040x" (java.math.BigInteger. 1 (.digest md))))))
+
 (defn is-server-running? []
   (try
     (with-open [s (Socket.)]
@@ -292,6 +303,29 @@
           {:status 404
            :headers {"Content-Type" "text/plain"}
            :body "404 Shaderpack Not Found"}))
+
+      (= uri "/api/resourcepack-manifest")
+      (let [f (io/file (cfg/resourcepack-dir) "witch-hat-runtime.zip")]
+        (println (str "[AutoSync] Resource Pack manifest requested from " (:remote-addr req)))
+        (if (.exists f)
+          (json-resp {:name "witch-hat-runtime.zip"
+                      :sha1 (sha1-file f)
+                      :size (.length f)
+                      :path "/resourcepack/witch-hat-runtime.zip"})
+          (json-resp 404 {:error "Resource Pack not found"})))
+
+      (= uri "/resourcepack/witch-hat-runtime.zip")
+      (let [f (io/file (cfg/resourcepack-dir) "witch-hat-runtime.zip")]
+        (println (str "[AutoSync] Resource Pack downloaded from " (:remote-addr req)))
+        (if (.exists f)
+          {:status 200
+           :headers {"Content-Type" "application/zip"
+                     "Content-Disposition" "attachment; filename=\"witch-hat-runtime.zip\""
+                     "Content-Length" (str (.length f))}
+           :body (io/input-stream f)}
+          {:status 404
+           :headers {"Content-Type" "text/plain"}
+           :body "404 Resource Pack Not Found"}))
 
       ;; 2c. Complete Auto-Sync Installer Package (Mod + Shaderpack + Scripts)
       (or (= uri "/AlienSky-AutoSync-Pack.zip")

@@ -57,6 +57,9 @@
 (defn shaderpack-dir ^File []
   (io/file (get-env "MC_SHADERPACK_DIR" "/home/pace/dev/minecraft/alien-sky-pack-distribution/shaderpacks")))
 
+(defn resourcepack-dir ^File []
+  (io/file (get-env "MC_RESOURCEPACK_DIR" "/home/pace/dev/minecraft/alien-sky-pack-distribution/resourcepacks")))
+
 (defn pack-dir ^File []
   (io/file (get-env "MC_PACK_DIR" "/home/pace/dev/minecraft/alien-sky-pack-distribution")))
 
