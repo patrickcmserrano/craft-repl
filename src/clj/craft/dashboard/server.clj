@@ -271,8 +271,11 @@
 
       ;; 2b. Alien Sky Shaderpack Download & Manifest for Liz & Auto-Sync
       (= uri "/api/shaderpack-manifest")
-      (let [f (io/file (cfg/shaderpack-dir) "MakeUp-UltraFast-AlienSky.zip")]
-        (println (str "[AutoSync] Manifest requested from " (:remote-addr req)))
+      (let [f-v42    (io/file (cfg/shaderpack-dir) "AlienWorld-Sovereign-v4.2.zip")
+            f-legacy (io/file (cfg/shaderpack-dir) "MakeUp-UltraFast-AlienSky.zip")
+            f        (if (.exists f-v42) f-v42 f-legacy)
+            pack-name (if (.exists f-v42) "AlienWorld-Sovereign-v4.2.zip" "MakeUp-UltraFast-AlienSky.zip")]
+        (println (str "[AutoSync] Manifest requested from " (:remote-addr req) " -> " pack-name))
         (if (.exists f)
           (let [sha1 (with-open [is (io/input-stream f)]
                        (let [md (java.security.MessageDigest/getInstance "SHA-1")
@@ -283,21 +286,28 @@
                                (.update md buf 0 n)
                                (recur))))
                          (format "%040x" (java.math.BigInteger. 1 (.digest md)))))]
-            (json-resp {:name "MakeUp-UltraFast-AlienSky.zip"
+            (json-resp {:name pack-name
                         :sha1 sha1
                         :size (.length f)
                         :path "/shaderpack"}))
           (json-resp 404 {:error "Not found"})))
 
-      (or (= uri "/MakeUp-UltraFast-AlienSky.zip")
+      (or (= uri "/AlienWorld-Sovereign-v4.2.zip")
+          (= uri "/MakeUp-UltraFast-AlienSky.zip")
           (= uri "/alien-sky.zip")
           (= uri "/shaderpack"))
-      (let [f (io/file (cfg/shaderpack-dir) "MakeUp-UltraFast-AlienSky.zip")]
-        (println (str "[AutoSync] Shaderpack binary downloaded from " (:remote-addr req)))
+      (let [target-name (cond
+                          (= uri "/AlienWorld-Sovereign-v4.2.zip") "AlienWorld-Sovereign-v4.2.zip"
+                          (= uri "/MakeUp-UltraFast-AlienSky.zip") "MakeUp-UltraFast-AlienSky.zip"
+                          :else (if (.exists (io/file (cfg/shaderpack-dir) "AlienWorld-Sovereign-v4.2.zip"))
+                                  "AlienWorld-Sovereign-v4.2.zip"
+                                  "MakeUp-UltraFast-AlienSky.zip"))
+            f (io/file (cfg/shaderpack-dir) target-name)]
+        (println (str "[AutoSync] Shaderpack binary downloaded (" target-name ") from " (:remote-addr req)))
         (if (.exists f)
           {:status 200
            :headers {"Content-Type" "application/zip"
-                     "Content-Disposition" "attachment; filename=\"MakeUp-UltraFast-AlienSky.zip\""
+                     "Content-Disposition" (str "attachment; filename=\"" target-name "\"")
                      "Content-Length" (str (.length f))}
            :body (io/input-stream f)}
           {:status 404

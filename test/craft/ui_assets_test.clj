@@ -95,7 +95,7 @@
       (let [{:keys [status headers body raw]} (th/http-get "/api/shaderpack-manifest")]
         (is (= 200 status))
         (is (re-find #"application/json" (first (get headers "content-type" []))))
-        (is (= "MakeUp-UltraFast-AlienSky.zip" (:name body)))
+        (is (contains? #{"AlienWorld-Sovereign-v4.2.zip" "MakeUp-UltraFast-AlienSky.zip"} (:name body)))
         (is (string? (:sha1 body)))
         (is (= 40 (count (:sha1 body))))
         (is (= "/shaderpack" (:path body)))
